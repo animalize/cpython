@@ -1131,20 +1131,27 @@ entrance:
                 RETURN_FAILURE;
             }
 
-            LASTMARK_SAVE();
-
             /* see if the tail matches */
             state->repeat = ctx->u.rep->prev;
+
+            LASTMARK_SAVE();
+            ctx->in_repeat = (state->repeat != NULL);
+            if (ctx->in_repeat)
+                MARK_PUSH(ctx->lastmark);
+
             DO_JUMP(JUMP_MIN_UNTIL_2, jump_min_until_2, ctx->pattern);
             if (ret) {
+                if (ctx->in_repeat)
+                    MARK_POP_DISCARD(ctx->lastmark);
                 RETURN_ON_ERROR(ret);
                 RETURN_SUCCESS;
             }
+            if (ctx->in_repeat)
+                MARK_POP(ctx->lastmark);
+            LASTMARK_RESTORE();
 
             state->repeat = ctx->u.rep;
             state->ptr = ctx->ptr;
-
-            LASTMARK_RESTORE();
 
             if ((ctx->count >= (Py_ssize_t) ctx->u.rep->pattern[2]
                 && ctx->u.rep->pattern[2] != SRE_MAXREPEAT) ||
@@ -1152,6 +1159,7 @@ entrance:
                 RETURN_FAILURE;
 
             ctx->u.rep->count = ctx->count;
+            MARK_PUSH(ctx->lastmark);  /* already LASTMARK_SAVE() above */
             /* zero-width match protection */
             DATA_PUSH(&ctx->u.rep->last_ptr);
             ctx->u.rep->last_ptr = state->ptr;
@@ -1159,9 +1167,13 @@ entrance:
                     ctx->u.rep->pattern+3);
             DATA_POP(&ctx->u.rep->last_ptr);
             if (ret) {
+                MARK_POP_DISCARD(ctx->lastmark);
                 RETURN_ON_ERROR(ret);
                 RETURN_SUCCESS;
             }
+            MARK_POP(ctx->lastmark);
+            LASTMARK_RESTORE();
+
             ctx->u.rep->count = ctx->count-1;
             state->ptr = ctx->ptr;
             RETURN_FAILURE;
