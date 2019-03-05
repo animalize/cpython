@@ -1068,13 +1068,14 @@ entrance:
                 RETURN_FAILURE;
             }
 
+            LASTMARK_SAVE();
+
             if ((ctx->count < (Py_ssize_t) ctx->u.rep->pattern[2] ||
                 ctx->u.rep->pattern[2] == SRE_MAXREPEAT) &&
                 state->ptr != ctx->u.rep->last_ptr) {
                 /* we may have enough matches, but if we can
                    match another item, do so */
                 ctx->u.rep->count = ctx->count;
-                LASTMARK_SAVE();
                 MARK_PUSH(ctx->lastmark);
                 /* zero-width match protection */
                 DATA_PUSH(&ctx->u.rep->last_ptr);
@@ -1096,8 +1097,23 @@ entrance:
             /* cannot match more repeated items here.  make sure the
                tail matches */
             state->repeat = ctx->u.rep->prev;
+
+            /* already LASTMARK_SAVE() above */
+            ctx->in_repeat = (state->repeat != NULL);
+            if (ctx->in_repeat)
+                MARK_PUSH(ctx->lastmark);
+
             DO_JUMP(JUMP_MAX_UNTIL_3, jump_max_until_3, ctx->pattern);
-            RETURN_ON_SUCCESS(ret);
+            if (ret) {
+                if (ctx->in_repeat)
+                    MARK_POP_DISCARD(ctx->lastmark);
+                RETURN_ON_ERROR(ret);
+                RETURN_SUCCESS;
+            }
+            if (ctx->in_repeat)
+                MARK_POP(ctx->lastmark);
+            LASTMARK_RESTORE();
+
             state->repeat = ctx->u.rep;
             state->ptr = ctx->ptr;
             RETURN_FAILURE;
