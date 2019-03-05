@@ -1353,11 +1353,22 @@ entrance:
                    ctx->ptr, ctx->pattern[1]));
             if (ctx->ptr - (SRE_CHAR *)state->beginning >= (Py_ssize_t)ctx->pattern[1]) {
                 state->ptr = ctx->ptr - ctx->pattern[1];
+
+                LASTMARK_SAVE();
+                ctx->in_repeat = (state->repeat != NULL);
+                if (ctx->in_repeat)
+                    MARK_PUSH(ctx->lastmark);
+
                 DO_JUMP0(JUMP_ASSERT_NOT, jump_assert_not, ctx->pattern+2);
                 if (ret) {
+                    if (ctx->in_repeat)
+                        MARK_POP_DISCARD(ctx->lastmark);
                     RETURN_ON_ERROR(ret);
                     RETURN_FAILURE;
                 }
+                if (ctx->in_repeat)
+                    MARK_POP(ctx->lastmark);
+                LASTMARK_RESTORE();
             }
             ctx->pattern += ctx->pattern[0];
             break;
