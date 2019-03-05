@@ -1775,6 +1775,118 @@ class ReTests(unittest.TestCase):
                 self.assertEqual(m.group(1), "")
                 self.assertEqual(m.group(2), "y")
 
+    def test_bug_35859(self):
+        # four bugs about capturing groups
+
+        # ============================================
+        # need to reset capturing groups in SRE_SEARCH
+        # ============================================
+        # found in issue34294
+        s = "a\tx"
+        p = r"\b(?=(\t)|(x))x"
+        self.assertEqual(re.search(p, s).groups(), (None, 'x'))
+
+        # =============================
+        # macro MARK_PUSH(lastmark) bug
+        # =============================
+        # reported in issue35859
+        self.assertEqual(re.match(r'(ab|a)*?b', 'ab').groups(), ('a',))
+        self.assertEqual(re.match(r'(ab|a)+?b', 'ab').groups(), ('a',))
+        self.assertEqual(re.match(r'(ab|a){0,2}?b', 'ab').groups(), ('a',))
+        self.assertEqual(re.match(r'(.b|a)*?b', 'ab').groups(), ('a',))
+
+        # =======================================================
+        # JUMP_MIN_UNTIL_3 should LASTMARK_SAVE() and MARK_PUSH()
+        # =======================================================
+
+        # 1, triggered by SRE_OP_REPEAT_ONE, b? in this pattern
+        self.assertEqual(re.match(r'(ab?)*?b', 'ab').groups(), ('a',))
+
+        # 2, triggered by SRE_OP_MIN_REPEAT_ONE, a*? in this pattern
+        s = 'axxzaz'
+        p = r'(?:a*?(xx)??z)*'
+        self.assertEqual(re.match(p, s).groups(), ('xx',))
+
+        # 3, triggered by SRE_OP_MIN_UNTIL (JUMP_MIN_UNTIL_2)
+        #    (?:a|bc)*? in this pattern
+        s = 'axxzbcz'
+        p = r'(?:(?:a|bc)*?(xx)??z)*'
+        self.assertEqual(re.match(p, s).groups(), ('xx',))
+        #    test-case provided by issue9134
+        s = 'xtcxyzxc'
+        p = r'((x|yz)+?(t)??c)*'
+        self.assertEqual(re.match(p, s).groups(), ('xyzxc', 'x', 't'))
+
+        # ======================================================
+        # JUMP_ASSERT_NOT should LASTMARK_SAVE() and MARK_PUSH()
+        # ======================================================
+        # reported in issue725149
+        # negative assertion
+        self.assertEqual(re.match(r'(?!(..)c)', 'ab').groups(), (None,))
+        # negative assertion in a repeat
+        self.assertEqual(re.match(r'(?:(?!(ab)c).)*', 'ab').groups(), (None,))
+        self.assertEqual(re.match(r'((?!(bc)d)(.))*', 'abc').groups(),
+                         ('c', None, 'c'))
+        s = 'a\txa\tx'
+        p = r'(?:.*?\b(?=(\t)|(x))x)*'
+        self.assertEqual(re.match(p, s).groups(), (None, 'x'))
+
+        # =============================================================
+        # below asserts didn't fail before fix, just prevent regression
+        # =============================================================
+
+        # 1, why JUMP_MIN_REPEAT_ONE should LASTMARK_SAVE()
+        #    .?? in this pattern
+        m = re.match(r'.??(?=(a)?)b', 'ab')
+        self.assertEqual(m.span(), (0, 2))
+        self.assertEqual(m.groups(), (None,))
+        #    put in a repeat
+        m = re.match(r'(?:.??(?=(a)?)b)*', 'abab')
+        self.assertEqual(m.span(), (0, 4))
+        self.assertEqual(m.groups(), (None,))
+
+        # 2, why JUMP_MIN_UNTIL_2 should LASTMARK_SAVE()
+        #    (?:..)?? in this pattern
+        m = re.match(r'(?:..)??(?=(aa)?)bb', 'aabb')
+        self.assertEqual(m.span(), (0, 4))
+        self.assertEqual(m.groups(), (None,))
+        #    put in a repeat
+        m = re.match(r'(?:(?:..)??(?=(aa)?)bb)*', 'aabbaabb')
+        self.assertEqual(m.span(), (0, 8))
+        self.assertEqual(m.groups(), (None,))
+
+        # 3, why JUMP_REPEAT_ONE_1 should LASTMARK_SAVE()
+        #    .* in this pattern, tail starts with a literal.
+        self.assertEqual(re.match(r'.*x(?=(b)?)a', 'xaxb').groups(), (None,))
+
+        # 4, why JUMP_REPEAT_ONE_2 should LASTMARK_SAVE()
+        #    .* in this pattern, tail is general case
+        self.assertEqual(re.match(r'.*(?=(b)?)a', 'ab').groups(), (None,))
+
+        # 5, demonstrate that JUMP_MAX_UNTIL_3 doesn't need LASTMARK_SAVE()
+        #    this pattern is similar to 4
+        self.assertEqual(re.match(r'(.)*(?=(b)?)a', 'ab').groups(),
+                         (None, None))
+        self.assertEqual(re.match(r'(.){0}(?=(b)?)a', 'ab').groups(),
+                         (None, None))
+
+        # 6, positive assertion in a repeat
+        #    strictly speaking, this is a bug, the correct result should be
+        #    (None,), but it's very hard to fix with the current fundamental
+        #    implementation of sre.
+        #    PHP 7.3.2, Java 11.0.2, Ruby 2.6.1, and the third-party module
+        #    regex 2019.2.21, return ('a',) as well.
+        #    Perl 5.26.1, Node.js 10.15.1, return the correct result (None,)
+        #    Go 1.12, Rust 1.32.0, don't support lookaround yet.
+        self.assertEqual(re.match(r'(?:(?=(a)?).)*', 'ab').groups(), ('a',))
+
+        # 7, negative assertion
+        #    PHP 7.3.2, Ruby 2.6.1, Node.js 10.15.1, regex 2019.2.21 return
+        #    (None,)
+        #    Java 11.0.2, Perl 5.26.1, return ('b',)
+        #    Go 1.12, Rust 1.32.0, don't support lookaround yet.
+        self.assertEqual(re.match(r'a*(?!(b))', 'ab').groups(), (None,))
+
     @cpython_only
     def test_debug_flag(self):
         pat = r'(\.)(?:[ch]|py)(?(1)$|: )'
