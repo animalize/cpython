@@ -349,6 +349,8 @@ state_reset(SRE_STATE* state)
 {
     /* FIXME: dynamic! */
     /*memset(state->mark, 0, sizeof(*state->mark) * SRE_MARK_SIZE);*/
+    assert(state->repeat == NULL);
+    assert(state->data_stack_base == 0);
 
     state->lastmark = -1;
     state->lastindex = -1;
