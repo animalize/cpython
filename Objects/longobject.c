@@ -1659,6 +1659,22 @@ PyLong_AsLongLongAndOverflow(PyObject *vv, int *overflow)
     res = -1;
     i = Py_SIZE(v);
 
+    /* native int */
+    if (i == NATIVE_1) {
+        res = GET_NATIVE_1(v);
+        if (do_decref) {
+            Py_DECREF(v);
+        }
+        return res;
+    } else if (i == NATIVE_2) {
+        res = GET_NATIVE_2(v);
+        if (do_decref) {
+            Py_DECREF(v);
+        }
+        return res;
+    }
+
+    /* digits int */
     switch (i) {
     case -1:
         res = -(sdigit)v->ob_digit[0];
