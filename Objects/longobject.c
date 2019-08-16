@@ -322,68 +322,22 @@ PyObject *
 PyLong_FromLong(long ival)
 {
     PyLongObject *v;
-    unsigned long abs_ival;
-    unsigned long t;  /* unsigned so >> doesn't propagate sign bit */
-    int ndigits = 0;
-    int sign;
 
+    /* small int */
     CHECK_SMALL_INT(ival);
 
-    if (ival < 0) {
-        /* negate: can't write this as abs_ival = -ival since that
-           invokes undefined behaviour when ival is LONG_MIN */
-        abs_ival = 0U-(unsigned long)ival;
-        sign = -1;
-    }
-    else {
-        abs_ival = (unsigned long)ival;
-        sign = ival == 0 ? 0 : 1;
-    }
-
-    /* Fast path for single-digit ints */
-    if (!(abs_ival >> PyLong_SHIFT)) {
+    /* native int */
+    if (ival <= NATIVE_1_MAX && ival >= NATIVE_1_MIN) {
         v = _PyLong_New(1);
-        if (v) {
-            Py_SIZE(v) = sign;
-            v->ob_digit[0] = Py_SAFE_DOWNCAST(
-                abs_ival, unsigned long, digit);
-        }
-        return (PyObject*)v;
-    }
-
-#if PyLong_SHIFT==15
-    /* 2 digits */
-    if (!(abs_ival >> 2*PyLong_SHIFT)) {
+        if (v)
+            SET_NATIVE_1(v, ival);
+    } else {
+        assert(ival <= NATIVE_2_MAX && ival >= NATIVE_2_MIN);
         v = _PyLong_New(2);
-        if (v) {
-            Py_SIZE(v) = 2*sign;
-            v->ob_digit[0] = Py_SAFE_DOWNCAST(
-                abs_ival & PyLong_MASK, unsigned long, digit);
-            v->ob_digit[1] = Py_SAFE_DOWNCAST(
-                  abs_ival >> PyLong_SHIFT, unsigned long, digit);
-        }
-        return (PyObject*)v;
+        if (v)
+            SET_NATIVE_2(v, ival);
     }
-#endif
-
-    /* Larger numbers: loop to determine number of digits */
-    t = abs_ival;
-    while (t) {
-        ++ndigits;
-        t >>= PyLong_SHIFT;
-    }
-    v = _PyLong_New(ndigits);
-    if (v != NULL) {
-        digit *p = v->ob_digit;
-        Py_SIZE(v) = ndigits*sign;
-        t = abs_ival;
-        while (t) {
-            *p++ = Py_SAFE_DOWNCAST(
-                t & PyLong_MASK, unsigned long, digit);
-            t >>= PyLong_SHIFT;
-        }
-    }
-    return (PyObject *)v;
+    return (PyObject*)v;
 }
 
 /* Create a new int object from a C unsigned long int */
