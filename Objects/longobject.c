@@ -765,6 +765,25 @@ PyLong_AsSize_t(PyObject *vv)
 
     v = (PyLongObject *)vv;
     i = Py_SIZE(v);
+
+    /* native int */
+    if (i == NATIVE_1) {
+        if (GET_NATIVE_1(v) < 0) {
+            PyErr_SetString(PyExc_OverflowError,
+                    "can't convert negative value to size_t");
+            return (size_t) -1;
+        }
+        return GET_NATIVE_1(v);
+    } else if (i == NATIVE_2) {
+        if (GET_NATIVE_2(v) < 0) {
+            PyErr_SetString(PyExc_OverflowError,
+                    "can't convert negative value to size_t");
+            return (size_t) -1;
+        }
+        return (size_t) GET_NATIVE_2(v);
+    }
+
+    /* digits int */
     x = 0;
     if (i < 0) {
         PyErr_SetString(PyExc_OverflowError,
