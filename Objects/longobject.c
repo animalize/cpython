@@ -457,6 +457,8 @@ PyLong_FromDouble(double dval)
     }
     if (neg)
         Py_SIZE(v) = -(Py_SIZE(v));
+    
+    long_native(v);
     return (PyObject *)v;
 }
 
@@ -2664,6 +2666,8 @@ digit beyond the first.
     if (pend != NULL) {
         *pend = (char *)str;
     }
+
+    long_native(z);
     return (PyObject *) z;
 
   onError:
