@@ -1445,6 +1445,22 @@ PyLong_AsLongLong(PyObject *vv)
         do_decref = 1;
     }
 
+    /* native int */
+    if (Py_SIZE(v) == NATIVE_1) {
+        bytes = GET_NATIVE_1(v);
+        if (do_decref) {
+            Py_DECREF(v);
+        }
+        return bytes;
+    } else if (Py_SIZE(v) == NATIVE_2) {
+        bytes = GET_NATIVE_2(v);
+        if (do_decref) {
+            Py_DECREF(v);
+        }
+        return bytes;
+    }
+
+    /* digits int */
     res = 0;
     switch(Py_SIZE(v)) {
     case -1:
