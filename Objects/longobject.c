@@ -1260,11 +1260,27 @@ PyLong_FromSize_t(size_t ival)
 {
     PyLongObject *v;
     size_t t;
-    int ndigits = 0;
+    int ndigits;
 
-    if (ival < PyLong_BASE)
-        return PyLong_FromLong((long)ival);
+    /* small int */
+    CHECK_SMALL_UNSIGNED_INT(ival);
+
+    /* native int */
+    if (ival <= NATIVE_1_MAX) {
+        v = _PyLong_New(1);
+        if (v)
+            SET_NATIVE_1(v, ival);
+        return (PyObject*)v;
+    } else if (ival <= NATIVE_2_MAX) {
+        v = _PyLong_New(2);
+        if (v)
+            SET_NATIVE_2(v, ival);
+        return (PyObject*)v;
+    }
+
+    /* digits int */
     /* Count the number of Python digits. */
+    ndigits = 0;
     t = ival;
     while (t) {
         ++ndigits;
