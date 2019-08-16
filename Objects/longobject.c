@@ -99,6 +99,9 @@ do { \
     *(stwodigits*)object->ob_digit = (stwodigits) value; \
 } while (0)
 
+#define GET_NATIVE_1(object) (*(sdigit*)(object)->ob_digit)
+#define GET_NATIVE_2(object) (*(stwodigits*)(object)->ob_digit)
+
 /* If a freshly-allocated int is already shared, it must
    be a small integer, so negating it must go to PyLong_FromLong */
 Py_LOCAL_INLINE(void)
@@ -5831,11 +5834,10 @@ int
 _PyLong_Init(void)
 {
 #if NSMALLNEGINTS + NSMALLPOSINTS > 0
-    int ival, size;
+    int ival;
     PyLongObject *v = small_ints;
 
     for (ival = -NSMALLNEGINTS; ival <  NSMALLPOSINTS; ival++, v++) {
-        size = (ival < 0) ? -1 : ((ival == 0) ? 0 : 1);
         if (Py_TYPE(v) == &PyLong_Type) {
             /* The element is already initialized, most likely
              * the Python interpreter was initialized before.
@@ -5849,14 +5851,13 @@ _PyLong_Init(void)
              * the ref count might be larger. Set the refcnt
              * to the original refcnt + 1 */
             Py_REFCNT(op) = refcnt + 1;
-            assert(Py_SIZE(op) == size);
-            assert(v->ob_digit[0] == (digit)abs(ival));
+            assert(Py_SIZE(op) == NATIVE_1);
+            assert(GET_NATIVE_1(v) == ival);
         }
         else {
             (void)PyObject_INIT(v, &PyLong_Type);
         }
-        Py_SIZE(v) = size;
-        v->ob_digit[0] = (digit)abs(ival);
+        SET_NATIVE_1(v, ival);
     }
 #endif
     _PyLong_Zero = PyLong_FromLong(0);
