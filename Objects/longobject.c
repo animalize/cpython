@@ -82,6 +82,18 @@ maybe_small_long(PyLongObject *v)
 #define maybe_small_long(val) (val)
 #endif
 
+#define SET_NATIVE_1(object, value) \
+do { \
+    Py_SIZE(object) = NATIVE_1; \
+    *(sdigit*)object->ob_digit = (sdigit) value; \
+} while (0)
+
+#define SET_NATIVE_2(object, value) \
+do { \
+    Py_SIZE(object) = NATIVE_2; \
+    *(stwodigits*)object->ob_digit = (stwodigits) value; \
+} while (0)
+
 /* If a freshly-allocated int is already shared, it must
    be a small integer, so negating it must go to PyLong_FromLong */
 Py_LOCAL_INLINE(void)
