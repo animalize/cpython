@@ -697,6 +697,30 @@ PyLong_AsUnsignedLong(PyObject *vv)
 
     v = (PyLongObject *)vv;
     i = Py_SIZE(v);
+
+    /* native int */
+    if (i == NATIVE_1) {
+        if (GET_NATIVE_1(v) < 0) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "can't convert negative value to unsigned int");
+            return (unsigned long) -1;
+        }
+        return GET_NATIVE_1(v);
+    } else if (i == NATIVE_2) {
+        if (GET_NATIVE_2(v) < 0) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "can't convert negative value to unsigned int");
+            return (unsigned long) -1;
+        } else if (GET_NATIVE_2(v) > ULONG_MAX) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "Python int too large to convert "
+                            "to C unsigned long");
+            return (unsigned long) -1;
+        }
+        return (unsigned long) GET_NATIVE_2(v);
+    }
+
+    /* digits int */
     x = 0;
     if (i < 0) {
         PyErr_SetString(PyExc_OverflowError,
