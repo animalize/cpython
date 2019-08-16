@@ -823,6 +823,27 @@ _PyLong_AsUnsignedLongMask(PyObject *vv)
     }
     v = (PyLongObject *)vv;
     i = Py_SIZE(v);
+
+    /* native int */
+    if (i == NATIVE_1) {
+        if (GET_NATIVE_1(v) >= 0) {
+            x = GET_NATIVE_1(v);
+        } else {
+            x = 0 - (digit)GET_NATIVE_1(v);
+            x = x * -1;
+        }
+        return x;
+    } else if (i == NATIVE_2) {
+        if (GET_NATIVE_2(v) >= 0) {
+            x = (unsigned long) GET_NATIVE_2(v);
+        } else {
+            x = (unsigned long) (0 - (twodigits)GET_NATIVE_2(v));
+            x = x * -1;
+        }
+        return x;
+    }
+
+    /* digits int */
     switch (i) {
     case 0: return 0;
     case 1: return v->ob_digit[0];
