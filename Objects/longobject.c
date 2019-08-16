@@ -155,6 +155,32 @@ long_normalize(PyLongObject *v)
     return v;
 }
 
+static void
+long_native(PyLongObject *v)
+{
+    Py_ssize_t i, j;
+
+    if (Py_SIZE(v) == NATIVE_1 || Py_SIZE(v) == NATIVE_2)
+        return;
+
+    i = j = Py_ABS(Py_SIZE(v));
+    while (i > 0 && v->ob_digit[i-1] == 0)
+        --i;
+
+    /* XXX: can be more compact */
+    if (i <= 1) {
+        SET_NATIVE_1(v, MEDIUM_VALUE(v));
+    } else if (i == 2) {
+        stwodigits two = (v->ob_digit[1] << PyLong_SHIFT) + v->ob_digit[0];
+        if (Py_SIZE(v) < 0)
+            two = -two;
+        SET_NATIVE_2(v, two);
+    } else {
+        if (i != j)
+            Py_SIZE(v) = (Py_SIZE(v) < 0) ? -(i) : i;
+    }
+}
+
 /* _PyLong_FromNbInt: Convert the given object to a PyLongObject
    using the nb_int slot, if available.  Raise TypeError if either the
    nb_int slot is not available or the result of the call to nb_int
