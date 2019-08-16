@@ -633,6 +633,15 @@ PyLong_AsSsize_t(PyObject *vv) {
 
     v = (PyLongObject *)vv;
     i = Py_SIZE(v);
+
+    /* native int */
+    if (i == NATIVE_1) {
+        return GET_NATIVE_1(v);
+    } else if (i == NATIVE_2) {
+        return GET_NATIVE_2(v);
+    }
+
+    /* digits int */
     switch (i) {
     case -1: return -(sdigit)v->ob_digit[0];
     case 0: return 0;
