@@ -1235,38 +1235,22 @@ PyObject *
 PyLong_FromSsize_t(Py_ssize_t ival)
 {
     PyLongObject *v;
-    size_t abs_ival;
-    size_t t;  /* unsigned so >> doesn't propagate sign bit */
-    int ndigits = 0;
-    int negative = 0;
 
+    /* small int */
     CHECK_SMALL_INT(ival);
-    if (ival < 0) {
-        /* avoid signed overflow when ival = SIZE_T_MIN */
-        abs_ival = (size_t)(-1-ival)+1;
-        negative = 1;
-    }
-    else {
-        abs_ival = (size_t)ival;
-    }
 
-    /* Count the number of Python digits. */
-    t = abs_ival;
-    while (t) {
-        ++ndigits;
-        t >>= PyLong_SHIFT;
+    /* native int */
+    if (ival <= NATIVE_1_MAX && ival >= NATIVE_1_MIN) {
+        v = _PyLong_New(1);
+        if (v)
+            SET_NATIVE_1(v, ival);
+    } else {
+        assert(ival <= NATIVE_2_MAX && ival >= NATIVE_2_MIN);
+        v = _PyLong_New(2);
+        if (v)
+            SET_NATIVE_2(v, ival);
     }
-    v = _PyLong_New(ndigits);
-    if (v != NULL) {
-        digit *p = v->ob_digit;
-        Py_SIZE(v) = negative ? -ndigits : ndigits;
-        t = abs_ival;
-        while (t) {
-            *p++ = (digit)(t & PyLong_MASK);
-            t >>= PyLong_SHIFT;
-        }
-    }
-    return (PyObject *)v;
+    return (PyObject*)v;
 }
 
 /* Create a new int object from a C size_t. */
