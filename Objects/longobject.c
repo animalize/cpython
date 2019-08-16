@@ -1130,10 +1130,29 @@ PyLong_FromLongLong(long long ival)
     PyLongObject *v;
     unsigned long long abs_ival;
     unsigned long long t;  /* unsigned so >> doesn't propagate sign bit */
-    int ndigits = 0;
-    int negative = 0;
+    int ndigits;
+    int negative;
 
+    /* small int */
     CHECK_SMALL_INT(ival);
+
+    /* native int */
+    if (ival <= NATIVE_1_MAX && ival >= NATIVE_1_MIN) {
+        v = _PyLong_New(1);
+        if (v)
+            SET_NATIVE_1(v, ival);
+        return (PyObject*)v;
+    } else if (ival <= NATIVE_2_MAX && ival >= NATIVE_2_MIN) {
+        v = _PyLong_New(2);
+        if (v)
+            SET_NATIVE_2(v, ival);
+        return (PyObject*)v;
+    }
+
+    /* digits int */
+    ndigits = 0;
+    negative = 0;
+
     if (ival < 0) {
         /* avoid signed overflow on negation;  see comments
            in PyLong_FromLong above. */
