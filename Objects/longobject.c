@@ -102,6 +102,41 @@ do { \
 #define GET_NATIVE_1(object) (*(sdigit*)(object)->ob_digit)
 #define GET_NATIVE_2(object) (*(stwodigits*)(object)->ob_digit)
 
+static void
+native_to_digits(stwodigits value, Py_ssize_t *size, digit digits[])
+{
+    twodigits uvalue;
+    int sign;
+
+    if (value > 0) {
+        uvalue = value;
+        sign = 1;
+    } else if (value < 0) {
+        uvalue = 0 - (twodigits)value;
+        sign = -1;
+    } else {
+        *size = 0;
+        return;
+    }
+
+    digits[0] = (digit)(uvalue & PyLong_MASK);
+    uvalue >>= PyLong_SHIFT;
+    if (!uvalue) {
+        *size = 1 * sign;
+        return;
+    }
+
+    digits[1] = (digit)(uvalue & PyLong_MASK);
+    uvalue >>= PyLong_SHIFT;
+    if (!uvalue) {
+        *size = 2 * sign;
+        return;
+    }
+
+    digits[2] = (digit)uvalue;
+    *size = 3 * sign;
+}
+
 /* If a freshly-allocated int is already shared, it must
    be a small integer, so negating it must go to PyLong_FromLong */
 Py_LOCAL_INLINE(void)
