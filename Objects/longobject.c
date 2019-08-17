@@ -3161,7 +3161,7 @@ x_divrem(PyLongObject *v1, PyLongObject *w1, PyLongObject **prem)
 #endif
 
 double
-_PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
+_PyLong_Frexp_impl(Py_ssize_t size, digit *digits, Py_ssize_t *e)
 {
     Py_ssize_t a_size, a_bits, shift_digits, shift_bits, x_size;
     /* See below for why x_digits is always large enough. */
@@ -3172,13 +3172,13 @@ _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
        multiple of 4, rounding ties to a multiple of 8. */
     static const int half_even_correction[8] = {0, -1, -2, 1, 0, -1, 2, 1};
 
-    a_size = Py_ABS(Py_SIZE(a));
+    a_size = Py_ABS(size);
     if (a_size == 0) {
         /* Special case for 0: significand 0.0, exponent 0. */
         *e = 0;
         return 0.0;
     }
-    a_bits = bits_in_digit(a->ob_digit[a_size-1]);
+    a_bits = bits_in_digit(digits[a_size-1]);
     /* The following is an overflow-free version of the check
        "if ((a_size - 1) * PyLong_SHIFT + a_bits > PY_SSIZE_T_MAX) ..." */
     if (a_size >= (PY_SSIZE_T_MAX - 1) / PyLong_SHIFT + 1 &&
@@ -3218,7 +3218,7 @@ _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
         x_size = 0;
         while (x_size < shift_digits)
             x_digits[x_size++] = 0;
-        rem = v_lshift(x_digits + x_size, a->ob_digit, a_size,
+        rem = v_lshift(x_digits + x_size, digits, a_size,
                        (int)shift_bits);
         x_size += a_size;
         x_digits[x_size++] = rem;
@@ -3226,7 +3226,7 @@ _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
     else {
         shift_digits = (a_bits - DBL_MANT_DIG - 2) / PyLong_SHIFT;
         shift_bits = (a_bits - DBL_MANT_DIG - 2) % PyLong_SHIFT;
-        rem = v_rshift(x_digits, a->ob_digit + shift_digits,
+        rem = v_rshift(x_digits, digits + shift_digits,
                        a_size - shift_digits, (int)shift_bits);
         x_size = a_size - shift_digits;
         /* For correct rounding below, we need the least significant
@@ -3237,7 +3237,7 @@ _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
             x_digits[0] |= 1;
         else
             while (shift_digits > 0)
-                if (a->ob_digit[--shift_digits]) {
+                if (digits[--shift_digits]) {
                     x_digits[0] |= 1;
                     break;
                 }
@@ -3260,7 +3260,7 @@ _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
     }
 
     *e = a_bits;
-    return Py_SIZE(a) < 0 ? -dx : dx;
+    return size < 0 ? -dx : dx;
 
   overflow:
     /* exponent > PY_SSIZE_T_MAX */
@@ -3270,6 +3270,12 @@ _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
     return -1.0;
 }
 
+double
+_PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
+{
+    return _PyLong_Frexp_impl(Py_SIZE(a), a->ob_digit, e);
+}
+
 /* Get a C double from an int object.  Rounds to the nearest double,
    using the round-half-to-even rule in the case of a tie. */
 
@@ -3277,6 +3283,8 @@ double
 PyLong_AsDouble(PyObject *v)
 {
     Py_ssize_t exponent;
+    Py_ssize_t temp_size;
+    digit temp_digits[3];
     double x;
 
     if (v == NULL) {
@@ -3287,6 +3295,16 @@ PyLong_AsDouble(PyObject *v)
         PyErr_SetString(PyExc_TypeError, "an integer is required");
         return -1.0;
     }
+
+    /* native int */
+    if (Py_SIZE(v) == NATIVE_1) {
+        return (double)GET_NATIVE_1((PyLongObject *)v);
+    } else if (Py_SIZE(v) == NATIVE_2) {
+        native_to_digits(GET_NATIVE_2((PyLongObject *)v), &temp_size, temp_digits);
+        x = _PyLong_Frexp_impl(temp_size, temp_digits, &exponent);
+        goto next;
+    }
+
     if (Py_ABS(Py_SIZE(v)) <= 1) {
         /* Fast path; single digit long (31 bits) will cast safely
            to double.  This improves performance of FP/long operations
@@ -3295,6 +3313,8 @@ PyLong_AsDouble(PyObject *v)
         return (double)MEDIUM_VALUE((PyLongObject *)v);
     }
     x = _PyLong_Frexp((PyLongObject *)v, &exponent);
+
+next:
     if ((x == -1.0 && PyErr_Occurred()) || exponent > DBL_MAX_EXP) {
         PyErr_SetString(PyExc_OverflowError,
                         "int too large to convert to float");
