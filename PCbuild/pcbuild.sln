@@ -49,6 +49,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "select", "select.vcxproj", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "_lzma", "_lzma.vcxproj", "{F9D71780-F393-11E0-BE50-0800200C9A66}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "_zstd", "_zstd.vcxproj", "{15327c2c-a91d-4182-928c-d3352c31f1f0}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unicodedata", "unicodedata.vcxproj", "{ECC7CEAC-A5E5-458E-BB9E-2413CC847881}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pyexpat", "pyexpat.vcxproj", "{D06B6426-4762-44CC-8BAD-D79052507F2F}"
