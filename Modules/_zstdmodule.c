@@ -33,6 +33,36 @@ typedef struct {
     PyThread_type_lock d_dict_lock;
 } ZstdDict;
 
+static ZSTD_CDict*
+_get_CDict(ZstdDict *self, int compressionLevel) {
+
+    ACQUIRE_LOCK(self->c_dict_lock);
+    if (self->c_dict == NULL) {
+        Py_BEGIN_ALLOW_THREADS
+        self->c_dict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_buffer),
+                                        Py_SIZE(self->dict_buffer), compressionLevel);
+        Py_END_ALLOW_THREADS
+    }
+    RELEASE_LOCK(self->c_dict_lock);
+
+    return self->c_dict;
+}
+
+static ZSTD_DDict*
+_get_DDict(ZstdDict *self) {
+
+    ACQUIRE_LOCK(self->d_dict_lock);
+    if (self->d_dict == NULL) {
+        Py_BEGIN_ALLOW_THREADS
+        self->d_dict = ZSTD_createDDict(PyBytes_AS_STRING(self->dict_buffer),
+                                        Py_SIZE(self->dict_buffer));
+        Py_END_ALLOW_THREADS
+    }
+    RELEASE_LOCK(self->d_dict_lock);
+
+    return self->d_dict;
+}
+
 /*[clinic input]
 module _zstd
 class _zstd.ZstdDict "ZstdDict *" "&ZstdDict_Type"
@@ -272,13 +302,15 @@ _zstd.compress
 
     data: Py_buffer
         Binary data to be compressed.
+    dict: object
+        Dictionary
 
 Returns a bytes object containing compressed data.
 [clinic start generated code]*/
 
 static PyObject *
-_zstd_compress_impl(PyObject *module, Py_buffer *data)
-/*[clinic end generated code: output=01007fa703be1682 input=26f155ed6047c8ba]*/
+_zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
+/*[clinic end generated code: output=af1b7543f413e4f4 input=7b4f2bb37f30e2fd]*/
 {
     ZSTD_CCtx *cctx = NULL;
     ZSTD_inBuffer in;
@@ -299,6 +331,14 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data)
     // creat zstd context
     cctx = ZSTD_createCCtx();
     if (cctx == NULL) {
+        goto error;
+    }
+
+    // load dict
+    zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, 1));
+    if (ZSTD_isError(zstd_ret)) {
+        _zstd_state *state = get_zstd_state(module);
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
         goto error;
     }
 
@@ -508,34 +548,6 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_data)
 error:
     Py_XDECREF(self->dict_buffer);
     return -1;
-}
-
-static ZSTD_CDict*
-_get_CDict(ZstdDict *self, const void *dictBuffer, size_t dictSize, int compressionLevel){
-
-    ACQUIRE_LOCK(self->c_dict_lock);
-    if (self->c_dict == NULL) {
-        Py_BEGIN_ALLOW_THREADS
-        self->c_dict = ZSTD_createCDict(dictBuffer, dictSize, compressionLevel);
-        Py_END_ALLOW_THREADS
-    }
-    RELEASE_LOCK(self->c_dict_lock);
-
-    return self->c_dict;
-}
-
-static ZSTD_DDict*
-_get_DDict(ZstdDict *self, const void *dictBuffer, size_t dictSize){
-
-    ACQUIRE_LOCK(self->d_dict_lock);
-    if (self->d_dict == NULL) {
-        Py_BEGIN_ALLOW_THREADS
-        self->d_dict = ZSTD_createDDict(dictBuffer, dictSize);
-        Py_END_ALLOW_THREADS
-    }
-    RELEASE_LOCK(self->d_dict_lock);
-
-    return self->d_dict;
 }
 
 static PyMethodDef _ZstdDict_methods[] = {
