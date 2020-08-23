@@ -402,7 +402,7 @@ success:
 }
 
 static PyObject *
-ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+_ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     ZstdDict *self;
     self = (ZstdDict *) type->tp_alloc(type, 0);
@@ -416,7 +416,7 @@ ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static void
-ZstdDict_dealloc(ZstdDict *self)
+_ZstdDict_dealloc(ZstdDict *self)
 {
     Py_XDECREF(self->dict_buffer);
     if (self->c_dict) {
@@ -465,27 +465,33 @@ error:
     return -1;
 }
 
-
-static PyMethodDef ZstdDict_methods[] = {
+static PyMethodDef _ZstdDict_methods[] = {
     {NULL}
 };
 
 PyDoc_STRVAR(ZstdDict_dictid_doc,
 "ID of the Zstd dictionary.");
 
-static PyMemberDef zstddict_members[] = {
+static int
+_ZstdDict_traverse(ZstdDict *self, visitproc visit, void *arg)
+{
+    Py_VISIT(Py_TYPE(self));
+    return 0;
+}
+
+static PyMemberDef _ZstdDict_members[] = {
     {"dict_id", T_UINT, offsetof(ZstdDict, dict_id), READONLY, ZstdDict_dictid_doc},
     {NULL}
 };
 
 static PyType_Slot zstddict_slots[] = {
-    {Py_tp_methods, ZstdDict_methods},
-    {Py_tp_new, ZstdDict_new},
-    {Py_tp_dealloc, ZstdDict_dealloc},
+    {Py_tp_methods, _ZstdDict_methods},
+    {Py_tp_new, _ZstdDict_new},
+    {Py_tp_dealloc, _ZstdDict_dealloc},
     {Py_tp_init, _zstd_ZstdDict___init__},
     // {Py_tp_doc, (char *)Compressor_doc},
-    // {Py_tp_traverse, Compressor_traverse},
-    {Py_tp_members, zstddict_members},
+    {Py_tp_traverse, _ZstdDict_traverse},
+    {Py_tp_members, _ZstdDict_members},
     {0, 0}
 };
 
