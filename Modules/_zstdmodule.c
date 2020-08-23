@@ -232,6 +232,20 @@ _BlocksOutputBuffer_OnError(_BlocksOutputBuffer *buffer)
 #define OutputBuffer(F) _BlocksOutputBuffer_##F
 /* _BlocksOutputBuffer code end */
 
+typedef struct {
+    PyTypeObject *ZstdDict_type;
+    PyObject *ZstdError;
+} _zstd_state;
+
+static inline _zstd_state*
+get_zstd_state(PyObject *module)
+{
+    void *state = PyModule_GetState(module);
+    assert(state != NULL);
+    return (_zstd_state *)state;
+}
+
+
 /*[clinic input]
 _zstd.compress
 
@@ -270,11 +284,14 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data)
     while(1) {
         /* Zstd optimizes the case where the first flush mode is ZSTD_e_end,
            since it knows it is compressing the entire source in one pass. */
+        Py_BEGIN_ALLOW_THREADS
         zstd_ret = ZSTD_compressStream2(cctx, &out, &in, ZSTD_e_end);
+        Py_END_ALLOW_THREADS
 
         // check error
         if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(PyExc_Exception, ZSTD_getErrorName(zstd_ret));
+            _zstd_state *state = get_zstd_state(module);
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
 
@@ -345,11 +362,14 @@ _zstd_decompress_impl(PyObject *module, Py_buffer *data)
     }
 
     while(1) {
+        Py_BEGIN_ALLOW_THREADS
         zstd_ret = ZSTD_decompressStream(dctx, &out , &in);
+        Py_END_ALLOW_THREADS
 
         // check error
         if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(PyExc_Exception, ZSTD_getErrorName(zstd_ret));
+            _zstd_state *state = get_zstd_state(module);
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
 
@@ -380,11 +400,6 @@ success:
     }
     return ret;
 }
-
-typedef struct {
-    PyTypeObject *ZstdDict_type;
-    PyObject *ZstdError;
-} _zstd_state;
 
 static PyObject *
 ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -504,6 +519,7 @@ _zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
     Py_ssize_t full_size;
     size_t *chunk_sizes = NULL;
     PyObject *dict_buffer = NULL;
+    size_t zstd_ret;
 
     // list
     if (PyList_Check(iterable_of_bytes)) {
@@ -554,10 +570,14 @@ _zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
         goto error;
     }
 
-    size_t ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
-                                       PyBytes_AS_STRING(full_data), chunk_sizes, (UINT32)list_len);
-    if (ZDICT_isError(ret)) {
-        PyErr_SetString(PyExc_Exception, ZDICT_getErrorName(ret));
+    Py_BEGIN_ALLOW_THREADS
+    zstd_ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
+                                     PyBytes_AS_STRING(full_data), chunk_sizes, (UINT32)list_len);
+    Py_END_ALLOW_THREADS
+
+    if (ZDICT_isError(zstd_ret)) {
+        _zstd_state *state = get_zstd_state(module);
+        PyErr_SetString(state->ZstdError, ZDICT_getErrorName(zstd_ret));
         goto error;
     }
 
@@ -569,18 +589,11 @@ _zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
 error:
     Py_XDECREF(list);
     Py_XDECREF(full_data);
+    Py_XDECREF(dict_buffer);
     if (chunk_sizes != NULL) {
         PyMem_Free(chunk_sizes);
     }
     return NULL;
-}
-
-static inline _zstd_state*
-get_zstd_state(PyObject *module)
-{
-    void *state = PyModule_GetState(module);
-    assert(state != NULL);
-    return (_zstd_state *)state;
 }
 
 static int
