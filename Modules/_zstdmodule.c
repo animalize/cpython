@@ -2,8 +2,8 @@
 #include "Python.h"
 #include "structmember.h"         // PyMemberDef
 
-#include "..\lib\zstd.h"
-#include "..\lib\dictBuilder\zdict.h"
+#include "zstd.h"
+#include "dictBuilder\zdict.h"
 
 typedef struct {
     PyObject_HEAD
@@ -518,6 +518,11 @@ _zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
 
     // chunk_sizes
     const Py_ssize_t list_len = Py_SIZE(list);
+    if (list_len > UINT32_MAX) {
+        PyErr_SetString(PyExc_ValueError, "Number of data chunks is too big.");
+        goto error;
+    }
+
     chunk_sizes = PyMem_Malloc(list_len * sizeof(size_t));
     if (chunk_sizes == NULL) {
         goto error;
@@ -550,7 +555,7 @@ _zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
     }
 
     size_t ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
-                                       PyBytes_AS_STRING(full_data), chunk_sizes, list_len);
+                                       PyBytes_AS_STRING(full_data), chunk_sizes, (UINT32)list_len);
     if (ZDICT_isError(ret)) {
         PyErr_SetString(PyExc_Exception, ZDICT_getErrorName(ret));
         goto error;
@@ -581,30 +586,28 @@ get_zstd_state(PyObject *module)
 static int
 zstd_exec(PyObject *module)
 {
-#define ADD_INT_MACRO(module, macro)                                        \
-    do {                                                                    \
-        if (PyModule_AddIntMacro(module, macro) < 0) {                      \
-            return -1;                                                      \
-        }                                                                   \
-    } while (0)
-
     _zstd_state *state = get_zstd_state(module);
 
-    // state->error = PyErr_NewExceptionWithDoc("_lzma.LZMAError", "Call to liblzma failed.", NULL, NULL);
-    // if (state->error == NULL) {
-    //     return -1;
-    // }
-
-    // if (PyModule_AddType(module, (PyTypeObject *)state->error) < 0) {
-    //     return -1;
-    // }
+    // ZstdError
+    state->ZstdError = PyErr_NewExceptionWithDoc("_zstd.ZstdError", "Call to zstd failed.", NULL, NULL);
+    if (state->ZstdError == NULL) {
+        return -1;
+    }
+    Py_INCREF(state->ZstdError);
+    if (PyModule_AddType(module, (PyTypeObject *)state->ZstdError) < 0) {
+        Py_DECREF(state->ZstdError);
+        return -1;
+    }
 
     // ZstdDict
-    state->ZstdDict_type = (PyTypeObject *)PyType_FromSpec(&zstddict_type_spec);
+    state->ZstdDict_type = (PyTypeObject *)PyType_FromModuleAndSpec(module,
+                                                                    &zstddict_type_spec,
+                                                                    NULL);
     if (state->ZstdDict_type == NULL) {
         return -1;
     }
-    if (PyModule_AddObject(module, "ZstdDict", (PyObject*)state->ZstdDict_type) < 0) {
+    Py_INCREF(state->ZstdDict_type);
+    if (PyModule_AddType(module, (PyTypeObject *)state->ZstdDict_type) < 0) {
         Py_DECREF(state->ZstdDict_type);
         return -1;
     }
@@ -634,11 +637,41 @@ static PyModuleDef_Slot _zstd_slots[] = {
     {0, NULL}
 };
 
+static int
+_zstd_traverse(PyObject *module, visitproc visit, void *arg)
+{
+    _zstd_state *state = get_zstd_state(module);
+    Py_VISIT(state->ZstdDict_type);
+    Py_VISIT(state->ZstdError);
+    return 0;
+}
+
+static int
+_zstd_clear(PyObject *module)
+{
+    _zstd_state *state = get_zstd_state(module);
+    Py_CLEAR(state->ZstdDict_type);
+    Py_CLEAR(state->ZstdError);
+    return 0;
+}
+
+static void
+_zstd_free(void *module)
+{
+    _zstd_state *state = get_zstd_state(module);
+    Py_CLEAR(state->ZstdDict_type);
+    Py_CLEAR(state->ZstdError);
+}
+
 static PyModuleDef _zstdmodule = {
     PyModuleDef_HEAD_INIT,
     .m_name = "_zstd",
+    .m_size = sizeof(_zstd_state),
     .m_methods = _zstd_methods,
     .m_slots = _zstd_slots,
+    .m_traverse = _zstd_traverse,
+    .m_clear = _zstd_clear,
+    .m_free = _zstd_free,
 };
 
 PyMODINIT_FUNC
