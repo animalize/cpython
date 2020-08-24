@@ -3,13 +3,15 @@ preserve
 [clinic start generated code]*/
 
 PyDoc_STRVAR(_zstd_compress__doc__,
-"compress($module, /, data, dict=None)\n"
+"compress($module, /, data, level_or_option=None, dict=None)\n"
 "--\n"
 "\n"
 "Returns a bytes object containing compressed data.\n"
 "\n"
 "  data\n"
 "    Binary data to be compressed.\n"
+"  level_or_option\n"
+"    Compress level or option.\n"
 "  dict\n"
 "    Dictionary");
 
@@ -17,20 +19,22 @@ PyDoc_STRVAR(_zstd_compress__doc__,
     {"compress", (PyCFunction)(void(*)(void))_zstd_compress, METH_FASTCALL|METH_KEYWORDS, _zstd_compress__doc__},
 
 static PyObject *
-_zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict);
+_zstd_compress_impl(PyObject *module, Py_buffer *data,
+                    PyObject *level_or_option, PyObject *dict);
 
 static PyObject *
 _zstd_compress(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"data", "dict", NULL};
+    static const char * const _keywords[] = {"data", "level_or_option", "dict", NULL};
     static _PyArg_Parser _parser = {NULL, _keywords, "compress", 0};
-    PyObject *argsbuf[2];
+    PyObject *argsbuf[3];
     Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
     Py_buffer data = {NULL, NULL};
+    PyObject *level_or_option = Py_None;
     PyObject *dict = Py_None;
 
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 2, 0, argsbuf);
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 3, 0, argsbuf);
     if (!args) {
         goto exit;
     }
@@ -44,9 +48,15 @@ _zstd_compress(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObje
     if (!noptargs) {
         goto skip_optional_pos;
     }
-    dict = args[1];
+    if (args[1]) {
+        level_or_option = args[1];
+        if (!--noptargs) {
+            goto skip_optional_pos;
+        }
+    }
+    dict = args[2];
 skip_optional_pos:
-    return_value = _zstd_compress_impl(module, &data, dict);
+    return_value = _zstd_compress_impl(module, &data, level_or_option, dict);
 
 exit:
     /* Cleanup for data */
@@ -184,4 +194,4 @@ skip_optional_pos:
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=57a0205fb62989a1 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=53c449a1ebe9e14a input=a9049054013a1b77]*/

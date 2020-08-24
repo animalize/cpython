@@ -302,6 +302,8 @@ _zstd.compress
 
     data: Py_buffer
         Binary data to be compressed.
+    level_or_option: object = None
+        Compress level or option.
     dict: object = None
         Dictionary
 
@@ -309,8 +311,9 @@ Returns a bytes object containing compressed data.
 [clinic start generated code]*/
 
 static PyObject *
-_zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
-/*[clinic end generated code: output=af1b7543f413e4f4 input=1f6371c93135bcd3]*/
+_zstd_compress_impl(PyObject *module, Py_buffer *data,
+                    PyObject *level_or_option, PyObject *dict)
+/*[clinic end generated code: output=d960764f6635aad4 input=80d1dcb64fbef8e3]*/
 {
     ZSTD_CCtx *cctx = NULL;
     ZSTD_inBuffer in;
@@ -319,7 +322,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
     size_t zstd_ret;
     PyObject *ret;
     _zstd_state *state = get_zstd_state(module);
-    char use_dict = 0;
+    int use_dict = 0;
 
     // prepare input & output buffers
     in.src = data->buf;
@@ -338,12 +341,13 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
 
     // load dict to compress context
     if (dict == Py_None) {
-        // no dict
+        // no dict, no nothing.
     } else if (Py_TYPE(dict) == state->ZstdDict_type) {
         Py_INCREF(dict);
         use_dict = 1;
-
-        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, 1));
+        // reference a prepared compress dictionary, to be used
+        // for all next compressed frames.
+        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, 0));
         if (ZSTD_isError(zstd_ret)) {
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
@@ -366,7 +370,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
             goto error;
         }
 
-        // finished?
+        // finished
         if (zstd_ret == 0) {
             ret = OutputBuffer(Finish)(&buffer, &out);
             if (ret != NULL) {
@@ -393,6 +397,7 @@ success:
     if (cctx != NULL) {
         ZSTD_freeCCtx(cctx);
     }
+    // Py_DECREF dict after release cctx
     if (use_dict) {
         Py_DECREF(dict);
     }
