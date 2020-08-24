@@ -323,8 +323,9 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
     PyObject *ret;
     _zstd_state *state = get_zstd_state(module);
     int use_dict = 0;
+    Py_ssize_t compress_level = 0;
 
-    // prepare input & output buffers
+    // Prepare input & output buffers
     in.src = data->buf;
     in.size = data->len;
     in.pos = 0;
@@ -333,21 +334,81 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
         goto error;
     }
 
-    // creat compress context
+    // Creat compress context
     cctx = ZSTD_createCCtx();
     if (cctx == NULL) {
         goto error;
     }
 
-    // load dict to compress context
+    // level or option
+    if (level_or_option == Py_None) {
+        /* 0 means use default compress level. */
+        assert(compress_level == 0);
+    } else if (PyLong_Check(level_or_option)) {
+        compress_level = PyLong_AsSsize_t(level_or_option);
+        if (compress_level == -1 && PyErr_Occurred()) {
+            goto error;
+        }
+
+        if (compress_level > INT32_MAX || compress_level < INT32_MIN) {
+            PyErr_SetString(PyExc_ValueError,
+                            "compress_level argument should between -2147483648 and 2147483647.");
+            goto error;
+        }
+    } else if (PyDict_Check(level_or_option)) {
+        PyObject *key, *value;
+        Py_ssize_t pos = 0;
+
+        while (PyDict_Next(level_or_option, &pos, &key, &value)) {
+            long key_v = PyLong_AsLong(key);
+            if (key_v == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Key of option dict should be int.");
+                goto error;
+            }
+
+            long value_v = PyLong_AsLong(value);
+            if (value_v == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Key of option dict should be int.");
+                goto error;
+            }
+
+            if (key_v > INT32_MAX || key_v < INT32_MIN ||
+                value_v > INT32_MAX || value_v < INT32_MIN) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Key and value of option should between -2147483648 and 2147483647.");
+                goto error;
+            }
+
+            /* ZSTD_c_compressionLevel */
+            if (key_v == ZSTD_c_compressionLevel) {
+                compress_level = value_v;
+            }
+
+            /* Set parameter to compress context. */
+            zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
+            if (ZSTD_isError(zstd_ret)) {
+                PyErr_Format(state->ZstdError,
+                             "Error when setting option, key %d: %s",
+                             key_v, ZSTD_getErrorName(zstd_ret));
+                goto error;
+            }
+        }
+    } else {
+        PyErr_SetString(PyExc_ValueError, "level_or_option argument wrong type.");
+        goto error;
+    }
+
+    /* Load dict to compress context*/
     if (dict == Py_None) {
-        // no dict, no nothing.
+        /* No dict, no nothing. */
     } else if (Py_TYPE(dict) == state->ZstdDict_type) {
         Py_INCREF(dict);
         use_dict = 1;
-        // reference a prepared compress dictionary, to be used
-        // for all next compressed frames.
-        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, 0));
+
+        /* Reference a prepared compress dictionary. */
+        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, (int)compress_level));
         if (ZSTD_isError(zstd_ret)) {
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
@@ -364,13 +425,13 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
         zstd_ret = ZSTD_compressStream2(cctx, &out, &in, ZSTD_e_end);
         Py_END_ALLOW_THREADS
 
-        // check error
+        // Check error
         if (ZSTD_isError(zstd_ret)) {
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
 
-        // finished
+        // Finished
         if (zstd_ret == 0) {
             ret = OutputBuffer(Finish)(&buffer, &out);
             if (ret != NULL) {
@@ -380,7 +441,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
             }
         }
 
-        // output buffer exhausted, grow the buffer
+        // Output buffer exhausted, grow the buffer
         if (out.pos == out.size) {
             if (OutputBuffer(Grow)(&buffer, &out) < 0) {
                 goto error;
@@ -397,7 +458,6 @@ success:
     if (cctx != NULL) {
         ZSTD_freeCCtx(cctx);
     }
-    // Py_DECREF dict after release cctx
     if (use_dict) {
         Py_DECREF(dict);
     }
