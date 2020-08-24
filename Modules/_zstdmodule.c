@@ -69,7 +69,7 @@ class _zstd.ZstdDict "ZstdDict *" "&ZstdDict_Type"
 [clinic start generated code]*/
 /*[clinic end generated code: output=da39a3ee5e6b4b0d input=e5f7d2e8dbc268ec]*/
 
-#include "clinic\_zstd.c.h"
+#include "clinic\_zstdmodule.c.h"
 
 #ifdef UCHAR_MAX
 /* _BlocksOutputBuffer code */
@@ -302,7 +302,7 @@ _zstd.compress
 
     data: Py_buffer
         Binary data to be compressed.
-    dict: object
+    dict: object = None
         Dictionary
 
 Returns a bytes object containing compressed data.
@@ -310,7 +310,7 @@ Returns a bytes object containing compressed data.
 
 static PyObject *
 _zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
-/*[clinic end generated code: output=af1b7543f413e4f4 input=7b4f2bb37f30e2fd]*/
+/*[clinic end generated code: output=af1b7543f413e4f4 input=1f6371c93135bcd3]*/
 {
     ZSTD_CCtx *cctx = NULL;
     ZSTD_inBuffer in;
@@ -318,6 +318,8 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
     _BlocksOutputBuffer buffer;
     size_t zstd_ret;
     PyObject *ret;
+    _zstd_state *state = get_zstd_state(module);
+    char use_dict = 0;
 
     // prepare input & output buffers
     in.src = data->buf;
@@ -328,17 +330,26 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
         goto error;
     }
 
-    // creat zstd context
+    // creat compress context
     cctx = ZSTD_createCCtx();
     if (cctx == NULL) {
         goto error;
     }
 
-    // load dict
-    zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, 1));
-    if (ZSTD_isError(zstd_ret)) {
-        _zstd_state *state = get_zstd_state(module);
-        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+    // load dict to compress context
+    if (dict == Py_None) {
+        // no dict
+    } else if (Py_TYPE(dict) == state->ZstdDict_type) {
+        Py_INCREF(dict);
+        use_dict = 1;
+
+        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, 1));
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            goto error;
+        }
+    } else {
+        PyErr_SetString(PyExc_ValueError, "dict argument should be ZstdDict object.");
         goto error;
     }
 
@@ -351,7 +362,6 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data, PyObject *dict)
 
         // check error
         if (ZSTD_isError(zstd_ret)) {
-            _zstd_state *state = get_zstd_state(module);
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
@@ -382,6 +392,9 @@ error:
 success:
     if (cctx != NULL) {
         ZSTD_freeCCtx(cctx);
+    }
+    if (use_dict) {
+        Py_DECREF(dict);
     }
     return ret;
 }
