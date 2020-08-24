@@ -705,9 +705,36 @@ error:
     return NULL;
 }
 
+
 static int
 zstd_exec(PyObject *module)
 {
+#define ADD_INT_MACRO(module, macro)                                        \
+    do {                                                                    \
+        if (PyModule_AddIntMacro(module, macro) < 0) {                      \
+            return -1;                                                      \
+        }                                                                   \
+    } while (0)
+
+    ADD_INT_MACRO(module, ZSTD_c_compressionLevel);
+    ADD_INT_MACRO(module, ZSTD_c_windowLog);
+    ADD_INT_MACRO(module, ZSTD_c_hashLog);
+    ADD_INT_MACRO(module, ZSTD_c_chainLog);
+    ADD_INT_MACRO(module, ZSTD_c_searchLog);
+    ADD_INT_MACRO(module, ZSTD_c_minMatch);
+    ADD_INT_MACRO(module, ZSTD_c_targetLength);
+    ADD_INT_MACRO(module, ZSTD_c_strategy);
+    ADD_INT_MACRO(module, ZSTD_c_enableLongDistanceMatching);
+    ADD_INT_MACRO(module, ZSTD_c_ldmHashLog);
+    ADD_INT_MACRO(module, ZSTD_c_ldmMinMatch);
+    ADD_INT_MACRO(module, ZSTD_c_ldmBucketSizeLog);
+    ADD_INT_MACRO(module, ZSTD_c_ldmHashRateLog);
+    ADD_INT_MACRO(module, ZSTD_c_contentSizeFlag);
+    ADD_INT_MACRO(module, ZSTD_c_checksumFlag);
+    ADD_INT_MACRO(module, ZSTD_c_dictIDFlag);
+
+    ADD_INT_MACRO(module, ZSTD_d_windowLogMax);
+
     _zstd_state *state = get_zstd_state(module);
 
     // ZstdError
