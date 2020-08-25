@@ -636,7 +636,7 @@ static PyMethodDef _ZstdDict_methods[] = {
 };
 
 PyDoc_STRVAR(ZstdDict_dictid_doc,
-"ID of the Zstd dictionary, an 32-bit unsigned int value.");
+"ID of the Zstd dictionary, a 32-bit unsigned int value.");
 
 PyDoc_STRVAR(ZstdDict_dictbuffer_doc,
 "The content of the Zstd dictionary, a bytes object.");
@@ -652,10 +652,10 @@ static PyObject *
 _ZstdDict_repr(ZstdDict *dict)
 {
     char buf[128];
-    PyOS_snprintf(
-        buf, sizeof(buf),
-        "<ZstdDict dict_id=%u dict_size=%zd>",
-        dict->dict_id, Py_SIZE(dict->dict_buffer));
+    PyOS_snprintf(buf, sizeof(buf),
+                  "<ZstdDict dict_id=%u dict_size=%zd>",
+                  dict->dict_id, Py_SIZE(dict->dict_buffer));
+
     return PyUnicode_FromString(buf);
 }
 
@@ -707,7 +707,7 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     PyObject *dict_buffer = NULL;
     size_t zstd_ret;
 
-    /* Prepare chunks_number */
+    /* Prepare chunk_sizes */
     const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
     if (chunks_number > UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError, "Number of data chunks is too big, should <= 4294967295.");
@@ -739,6 +739,7 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
                                      PyBytes_AS_STRING(dst_data), chunk_sizes, (UINT32)chunks_number);
     Py_END_ALLOW_THREADS
 
+    /* Check zstd dict error. */
     if (ZDICT_isError(zstd_ret)) {
         _zstd_state *state = get_zstd_state(module);
         PyErr_SetString(state->ZstdError, ZDICT_getErrorName(zstd_ret));
@@ -749,10 +750,10 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     return dict_buffer;
 
 error:
-    Py_XDECREF(dict_buffer);
     if (chunk_sizes != NULL) {
         PyMem_Free(chunk_sizes);
     }
+    Py_XDECREF(dict_buffer);
     return NULL;
 }
 

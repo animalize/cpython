@@ -41,12 +41,14 @@ class cParameter:
 class dParameter:
     windowLogMax = ZSTD_d_windowLogMax
 
-def train_dict(chunks_iterable, dict_size=100*1024):
+def train_dict(iterable_of_chunks, dict_size=100*1024):
     chunks = []
     chunk_sizes = []
-    for chunk in chunks_iterable:
+    for chunk in iterable_of_chunks:
         chunks.append(chunk)
         chunk_sizes.append(len(chunk))
 
     chunks = b''.join(chunks)
-    return _train_dict(chunks, chunk_sizes, dict_size)
+    dict_content = _train_dict(chunks, chunk_sizes, dict_size)
+
+    return ZstdDict(dict_content)
