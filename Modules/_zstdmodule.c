@@ -316,7 +316,7 @@ Returns a bytes object containing compressed data.
 static PyObject *
 _zstd_compress_impl(PyObject *module, Py_buffer *data,
                     PyObject *level_or_option, PyObject *dict)
-/*[clinic end generated code: output=d960764f6635aad4 input=80d1dcb64fbef8e3]*/
+/*[clinic end generated code: output=d960764f6635aad4 input=89296277964fea58]*/
 {
     ZSTD_CCtx *cctx = NULL;
     ZSTD_inBuffer in;
@@ -689,78 +689,54 @@ static PyType_Spec zstddict_type_spec = {
 };
 
 /*[clinic input]
-_zstd.train_dict
+_zstd._train_dict
 
-    iterable_of_bytes: object
-    dict_size: Py_ssize_t=102400
+    dst_data: PyBytesObject
+    dst_data_sizes: object
+    dict_size: Py_ssize_t
 
-xxxxxxxxxxxxxxxxxx
+Train a Zstd dictionary.
 [clinic start generated code]*/
 
 static PyObject *
-_zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
-                      Py_ssize_t dict_size)
-/*[clinic end generated code: output=85e3aca2c9b1d960 input=eb203800208cd895]*/
+_zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
+                       PyObject *dst_data_sizes, Py_ssize_t dict_size)
+/*[clinic end generated code: output=d39b262ebfcac776 input=385ab3b6c6dcdc3d]*/
 {
-    PyObject *list = NULL;
-    PyObject *full_data = NULL;
-    Py_ssize_t full_size;
     size_t *chunk_sizes = NULL;
     PyObject *dict_buffer = NULL;
     size_t zstd_ret;
 
-    // list
-    if (PyList_Check(iterable_of_bytes)) {
-        list = iterable_of_bytes;
-        Py_INCREF(list);
-    } else {
-        list = PySequence_List(iterable_of_bytes);
-        if (list == NULL) {
-            goto error;
-        }
-    }
-
-    // chunk_sizes
-    const Py_ssize_t list_len = Py_SIZE(list);
-    if (list_len > UINT32_MAX) {
-        PyErr_SetString(PyExc_ValueError, "Number of data chunks is too big.");
+    /* Prepare chunks_number */
+    const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
+    if (chunks_number > UINT32_MAX) {
+        PyErr_SetString(PyExc_ValueError, "Number of data chunks is too big, should <= 4294967295.");
         goto error;
     }
 
-    chunk_sizes = PyMem_Malloc(list_len * sizeof(size_t));
+    chunk_sizes = PyMem_Malloc(chunks_number * sizeof(size_t));
     if (chunk_sizes == NULL) {
         goto error;
     }
 
-    full_size = 0;
-    for(Py_ssize_t i = 0; i < list_len; i++) {
-        PyObject *chunk = PyList_GET_ITEM(list, i);
-        chunk_sizes[i] = Py_SIZE(chunk);
-        full_size += Py_SIZE(chunk);
+    for(Py_ssize_t i = 0; i < chunks_number; i++) {
+        PyObject *size = PyList_GET_ITEM(dst_data_sizes, i);
+        chunk_sizes[i] = PyLong_AsSize_t(size);
+        if (chunk_sizes[i] == -1 && PyErr_Occurred()) {
+            goto error;
+        }
     }
 
-    // join the list
-    full_data = PyBytes_FromStringAndSize(NULL, full_size);
-    if (full_data == NULL) {
-        goto error;
-    }
-
-    full_size = 0;
-    for(Py_ssize_t i = 0; i < list_len; i++) {
-        PyObject *chunk = PyList_GET_ITEM(list, i);
-        memcpy(PyBytes_AS_STRING(full_data)+full_size, PyBytes_AS_STRING(chunk), Py_SIZE(chunk));
-        full_size += Py_SIZE(chunk);
-    }
-
-    // dict buffer
+    /* Allocate dict buffer */
     dict_buffer = PyBytes_FromStringAndSize(NULL, dict_size);
     if (dict_buffer == NULL) {
         goto error;
     }
 
+    /* Train the dictionary. */
     Py_BEGIN_ALLOW_THREADS
     zstd_ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
-                                     PyBytes_AS_STRING(full_data), chunk_sizes, (UINT32)list_len);
+                                     PyBytes_AS_STRING(dst_data), chunk_sizes, (UINT32)chunks_number);
     Py_END_ALLOW_THREADS
 
     if (ZDICT_isError(zstd_ret)) {
@@ -769,14 +745,10 @@ _zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
         goto error;
     }
 
-    Py_DECREF(list);
-    Py_DECREF(full_data);
     PyMem_Free(chunk_sizes);
     return dict_buffer;
 
 error:
-    Py_XDECREF(list);
-    Py_XDECREF(full_data);
     Py_XDECREF(dict_buffer);
     if (chunk_sizes != NULL) {
         PyMem_Free(chunk_sizes);
@@ -856,7 +828,7 @@ zstd_exec(PyObject *module)
 static PyMethodDef _zstd_methods[] = {
     _ZSTD_COMPRESS_METHODDEF
     _ZSTD_DECOMPRESS_METHODDEF
-    _ZSTD_TRAIN_DICT_METHODDEF
+    _ZSTD__TRAIN_DICT_METHODDEF
     {NULL}
 };
 

@@ -11,9 +11,12 @@ PyDoc_STRVAR(_zstd_compress__doc__,
 "  data\n"
 "    Binary data to be compressed.\n"
 "  level_or_option\n"
-"    Compress level or option.\n"
+"    It can be an int object, which in this case represents the compression\n"
+"    level. It can also be a dictionary for setting various advanced\n"
+"    parameters. The default value None means to use zstd\'s default\n"
+"    compression parameters.\n"
 "  dict\n"
-"    Dictionary");
+"    Pre-trained dictionary for compression, a ZstdDict object.");
 
 #define _ZSTD_COMPRESS_METHODDEF    \
     {"compress", (PyCFunction)(void(*)(void))_zstd_compress, METH_FASTCALL|METH_KEYWORDS, _zstd_compress__doc__},
@@ -144,41 +147,43 @@ exit:
     return return_value;
 }
 
-PyDoc_STRVAR(_zstd_train_dict__doc__,
-"train_dict($module, /, iterable_of_bytes, dict_size=102400)\n"
+PyDoc_STRVAR(_zstd__train_dict__doc__,
+"_train_dict($module, /, dst_data, dst_data_sizes, dict_size)\n"
 "--\n"
 "\n"
-"xxxxxxxxxxxxxxxxxx");
+"Train a Zstd dictionary.");
 
-#define _ZSTD_TRAIN_DICT_METHODDEF    \
-    {"train_dict", (PyCFunction)(void(*)(void))_zstd_train_dict, METH_FASTCALL|METH_KEYWORDS, _zstd_train_dict__doc__},
-
-static PyObject *
-_zstd_train_dict_impl(PyObject *module, PyObject *iterable_of_bytes,
-                      Py_ssize_t dict_size);
+#define _ZSTD__TRAIN_DICT_METHODDEF    \
+    {"_train_dict", (PyCFunction)(void(*)(void))_zstd__train_dict, METH_FASTCALL|METH_KEYWORDS, _zstd__train_dict__doc__},
 
 static PyObject *
-_zstd_train_dict(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+_zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
+                       PyObject *dst_data_sizes, Py_ssize_t dict_size);
+
+static PyObject *
+_zstd__train_dict(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"iterable_of_bytes", "dict_size", NULL};
-    static _PyArg_Parser _parser = {NULL, _keywords, "train_dict", 0};
-    PyObject *argsbuf[2];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-    PyObject *iterable_of_bytes;
-    Py_ssize_t dict_size = 102400;
+    static const char * const _keywords[] = {"dst_data", "dst_data_sizes", "dict_size", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "_train_dict", 0};
+    PyObject *argsbuf[3];
+    PyBytesObject *dst_data;
+    PyObject *dst_data_sizes;
+    Py_ssize_t dict_size;
 
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 2, 0, argsbuf);
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 3, 3, 0, argsbuf);
     if (!args) {
         goto exit;
     }
-    iterable_of_bytes = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
+    if (!PyBytes_Check(args[0])) {
+        _PyArg_BadArgument("_train_dict", "argument 'dst_data'", "bytes", args[0]);
+        goto exit;
     }
+    dst_data = (PyBytesObject *)args[0];
+    dst_data_sizes = args[1];
     {
         Py_ssize_t ival = -1;
-        PyObject *iobj = _PyNumber_Index(args[1]);
+        PyObject *iobj = _PyNumber_Index(args[2]);
         if (iobj != NULL) {
             ival = PyLong_AsSsize_t(iobj);
             Py_DECREF(iobj);
@@ -188,10 +193,9 @@ _zstd_train_dict(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyOb
         }
         dict_size = ival;
     }
-skip_optional_pos:
-    return_value = _zstd_train_dict_impl(module, iterable_of_bytes, dict_size);
+    return_value = _zstd__train_dict_impl(module, dst_data, dst_data_sizes, dict_size);
 
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=53c449a1ebe9e14a input=a9049054013a1b77]*/
+/*[clinic end generated code: output=343a8b90392b5455 input=a9049054013a1b77]*/

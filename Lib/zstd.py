@@ -15,7 +15,9 @@ __all__ = ('ZstdDict', 'ZstdError',
 import builtins
 import io
 import os
+
 from _zstd import *
+from _zstd import _train_dict
 import _compression
 
 class cParameter:
@@ -39,3 +41,12 @@ class cParameter:
 class dParameter:
     windowLogMax = ZSTD_d_windowLogMax
 
+def train_dict(chunks_iterable, dict_size=100*1024):
+    chunks = []
+    chunk_sizes = []
+    for chunk in chunks_iterable:
+        chunks.append(chunk)
+        chunk_sizes.append(len(chunk))
+
+    chunks = b''.join(chunks)
+    return _train_dict(chunks, chunk_sizes, dict_size)
