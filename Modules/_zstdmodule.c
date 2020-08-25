@@ -303,9 +303,12 @@ _zstd.compress
     data: Py_buffer
         Binary data to be compressed.
     level_or_option: object = None
-        Compress level or option.
+        It can be an int object, which in this case represents the compression
+        level. It can also be a dictionary for setting various advanced
+        parameters. The default value None means to use zstd's default
+        compression parameters.
     dict: object = None
-        Dictionary
+        Pre-trained dictionary for compression, a ZstdDict object.
 
 Returns a bytes object containing compressed data.
 [clinic start generated code]*/
@@ -633,7 +636,10 @@ static PyMethodDef _ZstdDict_methods[] = {
 };
 
 PyDoc_STRVAR(ZstdDict_dictid_doc,
-"ID of the Zstd dictionary.");
+"ID of the Zstd dictionary, an 32-bit unsigned int value.");
+
+PyDoc_STRVAR(ZstdDict_dictbuffer_doc,
+"The content of the Zstd dictionary, a bytes object.");
 
 static int
 _ZstdDict_traverse(ZstdDict *self, visitproc visit, void *arg)
@@ -642,8 +648,20 @@ _ZstdDict_traverse(ZstdDict *self, visitproc visit, void *arg)
     return 0;
 }
 
+static PyObject *
+_ZstdDict_repr(ZstdDict *dict)
+{
+    char buf[128];
+    PyOS_snprintf(
+        buf, sizeof(buf),
+        "<ZstdDict dict_id=%u dict_size=%zd>",
+        dict->dict_id, Py_SIZE(dict->dict_buffer));
+    return PyUnicode_FromString(buf);
+}
+
 static PyMemberDef _ZstdDict_members[] = {
     {"dict_id", T_UINT, offsetof(ZstdDict, dict_id), READONLY, ZstdDict_dictid_doc},
+    {"dict_content", T_OBJECT_EX, offsetof(ZstdDict, dict_buffer), READONLY, ZstdDict_dictbuffer_doc},
     {NULL}
 };
 
@@ -655,6 +673,7 @@ static PyType_Slot zstddict_slots[] = {
     // {Py_tp_doc, (char *)Compressor_doc},
     {Py_tp_traverse, _ZstdDict_traverse},
     {Py_tp_members, _ZstdDict_members},
+    {Py_tp_repr, _ZstdDict_repr},
     {0, 0}
 };
 
