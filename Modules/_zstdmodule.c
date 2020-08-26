@@ -1027,16 +1027,16 @@ zstd_exec(PyObject *module)
     ADD_INT_MACRO(module, ZSTD_d_windowLogMax);
 
     _zstd_state *state = get_zstd_state(module);
+    state->ZstdError = NULL;
+    state->ZstdDict_type = NULL;
 
     // ZstdError
     state->ZstdError = PyErr_NewExceptionWithDoc("_zstd.ZstdError", "Call to zstd failed.", NULL, NULL);
     if (state->ZstdError == NULL) {
-        return -1;
+        goto error;
     }
-    Py_INCREF(state->ZstdError);
     if (PyModule_AddType(module, (PyTypeObject *)state->ZstdError) < 0) {
-        Py_DECREF(state->ZstdError);
-        return -1;
+        goto error;
     }
 
     // ZstdDict
@@ -1044,12 +1044,10 @@ zstd_exec(PyObject *module)
                                                                     &zstddict_type_spec,
                                                                     NULL);
     if (state->ZstdDict_type == NULL) {
-        return -1;
+        goto error;
     }
-    Py_INCREF(state->ZstdDict_type);
     if (PyModule_AddType(module, (PyTypeObject *)state->ZstdDict_type) < 0) {
-        Py_DECREF(state->ZstdDict_type);
-        return -1;
+        goto error;
     }
 
     // state->lzma_decompressor_type = (PyTypeObject *)PyType_FromModuleAndSpec(module,
@@ -1063,6 +1061,11 @@ zstd_exec(PyObject *module)
     // }
 
     return 0;
+
+error:
+    Py_XDECREF(state->ZstdError);
+    Py_XDECREF(state->ZstdDict_type);
+    return -1;
 }
 
 static PyMethodDef _zstd_methods[] = {
@@ -1100,9 +1103,7 @@ _zstd_clear(PyObject *module)
 static void
 _zstd_free(void *module)
 {
-    _zstd_state *state = get_zstd_state(module);
-    Py_CLEAR(state->ZstdDict_type);
-    Py_CLEAR(state->ZstdError);
+    _zstd_clear((PyObject *)module);
 }
 
 static PyModuleDef _zstdmodule = {
