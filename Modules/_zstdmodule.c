@@ -818,6 +818,37 @@ error:
     return NULL;
 }
 
+/*[clinic input]
+_zstd._get_cparam_bounds
+
+    cParam: int
+
+Get cParameter bounds.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd__get_cparam_bounds_impl(PyObject *module, int cParam)
+/*[clinic end generated code: output=5b0f68046a6f0721 input=d98575eb2b39d124]*/
+{
+    PyObject* ret;
+
+    ZSTD_bounds const bound = ZSTD_cParam_getBounds(cParam);
+    if (ZSTD_isError(bound.error)) {
+        _zstd_state* state = get_zstd_state(module);
+        PyErr_SetString(state->ZstdError, ZDICT_getErrorName(bound.error));
+    }
+
+    ret = PyTuple_New(2);
+    if (ret == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    PyTuple_SET_ITEM(ret, 0, PyLong_FromLong(bound.lowerBound));
+    PyTuple_SET_ITEM(ret, 1, PyLong_FromLong(bound.upperBound));
+
+    return ret;
+}
 
 static int
 zstd_exec(PyObject *module)
