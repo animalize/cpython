@@ -17,9 +17,9 @@
 typedef struct {
     PyObject_HEAD
 
-    // Content of the dictionary
-    PyObject *dict_buffer;
-    // Dictionary id
+    /* Content of the dictionary, bytes object. */
+    PyObject *dict_content;
+    /* Dictionary id */
     UINT32 dict_id;
 
     /* Reuseable compress/decompress dictionary, they are created once and
@@ -30,7 +30,7 @@ typedef struct {
     PyObject *c_dicts;
     ZSTD_DDict *d_dict;
 
-    // Thread lock for generating ZSTD_CDict/ZSTD_DDict
+    /* Thread lock for generating ZSTD_CDict/ZSTD_DDict */
     PyThread_type_lock lock;
 } ZstdDict;
 
@@ -42,7 +42,7 @@ capsule_free_cdict(PyObject *capsule) {
 
 static ZSTD_CDict*
 _get_CDict(ZstdDict *self, int compressionLevel) {
-    PyObject *level;
+    PyObject *level = NULL;
     PyObject *capsule;
     ZSTD_CDict *cdict;
 
@@ -61,8 +61,8 @@ _get_CDict(ZstdDict *self, int compressionLevel) {
         goto success;
     } else {
         Py_BEGIN_ALLOW_THREADS
-        cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_buffer),
-                                 Py_SIZE(self->dict_buffer), compressionLevel);
+        cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_content),
+                                 Py_SIZE(self->dict_content), compressionLevel);
         Py_END_ALLOW_THREADS
 
         if (cdict == NULL) {
@@ -97,8 +97,8 @@ _get_DDict(ZstdDict *self) {
     ACQUIRE_LOCK(self);
     if (self->d_dict == NULL) {
         Py_BEGIN_ALLOW_THREADS
-        self->d_dict = ZSTD_createDDict(PyBytes_AS_STRING(self->dict_buffer),
-                                        Py_SIZE(self->dict_buffer));
+        self->d_dict = ZSTD_createDDict(PyBytes_AS_STRING(self->dict_content),
+                                        Py_SIZE(self->dict_content));
         Py_END_ALLOW_THREADS
     }
     RELEASE_LOCK(self);
@@ -722,7 +722,7 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     ZstdDict *self;
     self = (ZstdDict *) type->tp_alloc(type, 0);
 
-    self->dict_buffer = NULL;
+    self->dict_content = NULL;
     self->dict_id = 0;
 
     self->c_dicts = PyDict_New();
@@ -755,7 +755,7 @@ _ZstdDict_dealloc(ZstdDict *self)
 
     /* Release dict_buffer at the end, self->c_dicts and self->d_dict
        may refer to self->dict_buffer. */
-    Py_DECREF(self->dict_buffer);
+    Py_DECREF(self->dict_content);
 
     PyTypeObject *tp = Py_TYPE(self);
     tp->tp_free((PyObject *)self);
@@ -780,7 +780,7 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_data)
     }
 
     Py_INCREF(dict_data);
-    self->dict_buffer = dict_data;
+    self->dict_content = dict_data;
     
     // get dict_id
     self->dict_id = ZDICT_getDictID(PyBytes_AS_STRING(dict_data), Py_SIZE(dict_data));
@@ -792,7 +792,7 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_data)
     return 0;
 
 error:
-    Py_XDECREF(self->dict_buffer);
+    Py_XDECREF(self->dict_content);
     return -1;
 }
 
@@ -819,14 +819,14 @@ _ZstdDict_repr(ZstdDict *dict)
     char buf[128];
     PyOS_snprintf(buf, sizeof(buf),
                   "<ZstdDict dict_id=%u dict_size=%zd>",
-                  dict->dict_id, Py_SIZE(dict->dict_buffer));
+                  dict->dict_id, Py_SIZE(dict->dict_content));
 
     return PyUnicode_FromString(buf);
 }
 
 static PyMemberDef _ZstdDict_members[] = {
     {"dict_id", T_UINT, offsetof(ZstdDict, dict_id), READONLY, ZstdDict_dictid_doc},
-    {"dict_content", T_OBJECT_EX, offsetof(ZstdDict, dict_buffer), READONLY, ZstdDict_dictbuffer_doc},
+    {"dict_content", T_OBJECT_EX, offsetof(ZstdDict, dict_content), READONLY, ZstdDict_dictbuffer_doc},
     {NULL}
 };
 
