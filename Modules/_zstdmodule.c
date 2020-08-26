@@ -835,7 +835,8 @@ _zstd__get_cparam_bounds_impl(PyObject *module, int cParam)
     ZSTD_bounds const bound = ZSTD_cParam_getBounds(cParam);
     if (ZSTD_isError(bound.error)) {
         _zstd_state* state = get_zstd_state(module);
-        PyErr_SetString(state->ZstdError, ZDICT_getErrorName(bound.error));
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(bound.error));
+        return NULL;
     }
 
     ret = PyTuple_New(2);
@@ -849,6 +850,40 @@ _zstd__get_cparam_bounds_impl(PyObject *module, int cParam)
 
     return ret;
 }
+
+/*[clinic input]
+_zstd._get_dparam_bounds
+
+    dParam: int
+
+Get dParameter bounds.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd__get_dparam_bounds_impl(PyObject *module, int dParam)
+/*[clinic end generated code: output=6382b8e9779430c2 input=4a29b9fd6fafe7c6]*/
+{
+    PyObject* ret;
+
+    ZSTD_bounds const bound = ZSTD_dParam_getBounds(dParam);
+    if (ZSTD_isError(bound.error)) {
+        _zstd_state* state = get_zstd_state(module);
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(bound.error));
+        return NULL;
+    }
+
+    ret = PyTuple_New(2);
+    if (ret == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    PyTuple_SET_ITEM(ret, 0, PyLong_FromLong(bound.lowerBound));
+    PyTuple_SET_ITEM(ret, 1, PyLong_FromLong(bound.upperBound));
+
+    return ret;
+}
+
 
 static int
 zstd_exec(PyObject *module)
@@ -922,6 +957,8 @@ static PyMethodDef _zstd_methods[] = {
     _ZSTD_COMPRESS_METHODDEF
     _ZSTD_DECOMPRESS_METHODDEF
     _ZSTD__TRAIN_DICT_METHODDEF
+    _ZSTD__GET_CPARAM_BOUNDS_METHODDEF
+    _ZSTD__GET_DPARAM_BOUNDS_METHODDEF
     {NULL}
 };
 

@@ -17,7 +17,7 @@ import io
 import os
 
 from _zstd import *
-from _zstd import _train_dict
+from _zstd import _train_dict, _get_cparam_bounds, _get_dparam_bounds
 import _compression
 
 class cParameter:
@@ -38,8 +38,18 @@ class cParameter:
     checksumFlag = ZSTD_c_checksumFlag
     dictIDFlag = ZSTD_c_dictIDFlag
 
+    @staticmethod
+    def get_bounds(cParameter):
+        return _get_cparam_bounds(cParameter)
+
+
 class dParameter:
     windowLogMax = ZSTD_d_windowLogMax
+
+    @staticmethod
+    def get_bounds(dParameter):
+        return _get_dparam_bounds(dParameter)
+
 
 def train_dict(iterable_of_chunks, dict_size=100*1024):
     chunks = []

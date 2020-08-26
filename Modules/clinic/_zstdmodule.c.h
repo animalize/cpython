@@ -253,4 +253,39 @@ _zstd__get_cparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=259916a8dbc1ddca input=a9049054013a1b77]*/
+
+PyDoc_STRVAR(_zstd__get_dparam_bounds__doc__,
+"_get_dparam_bounds($module, /, dParam)\n"
+"--\n"
+"\n"
+"Get dParameter bounds.");
+
+#define _ZSTD__GET_DPARAM_BOUNDS_METHODDEF    \
+    {"_get_dparam_bounds", (PyCFunction)(void(*)(void))_zstd__get_dparam_bounds, METH_FASTCALL|METH_KEYWORDS, _zstd__get_dparam_bounds__doc__},
+
+static PyObject *
+_zstd__get_dparam_bounds_impl(PyObject *module, int dParam);
+
+static PyObject *
+_zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"dParam", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "_get_dparam_bounds", 0};
+    PyObject *argsbuf[1];
+    int dParam;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 1, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    dParam = _PyLong_AsInt(args[0]);
+    if (dParam == -1 && PyErr_Occurred()) {
+        goto exit;
+    }
+    return_value = _zstd__get_dparam_bounds_impl(module, dParam);
+
+exit:
+    return return_value;
+}
+/*[clinic end generated code: output=3b3f43dbeb5deae5 input=a9049054013a1b77]*/
