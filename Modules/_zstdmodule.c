@@ -311,6 +311,17 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
                             "Compress level out of range.");
             return -1;
         }
+
+        /* Set ZSTD_c_compressionLevel to compress context */
+        zstd_ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, *compress_level);
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_Format(state->ZstdError,
+                         "Error when setting compression level: %s",
+                         ZSTD_getErrorName(zstd_ret));
+            return -1;
+        }
         return 0;
     }
     
@@ -407,7 +418,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
     size_t zstd_ret;
     PyObject *ret;
     _zstd_state *state = get_zstd_state(module);
-    int compress_level = 0;
+    int compress_level = 0;  /* 0 means use zstd's default compressionLevel */
 
     /* Prepare input & output buffers */
     in.src = data->buf;
