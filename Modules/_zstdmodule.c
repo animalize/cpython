@@ -297,6 +297,72 @@ get_zstd_state(PyObject *module)
 }
 
 
+static int
+set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
+                 PyObject *level_or_option, Py_ssize_t *compress_level)
+{
+    size_t zstd_ret;
+
+    /* Use default compress options */
+    if (level_or_option == Py_None) {
+        assert(*compress_level == 0);  
+        return 0;
+    }
+
+    /* Integer compression level */
+    if (PyLong_Check(level_or_option)) {
+        *compress_level = _PyLong_AsInt(level_or_option);
+        if (*compress_level == -1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                            "Compress level out of range.");
+            return -1;
+        }
+        return 0;
+    }
+    
+    /* Options dict */
+    if (PyDict_Check(level_or_option)) {
+        PyObject* key, * value;
+        Py_ssize_t pos = 0;
+
+        while (PyDict_Next(level_or_option, &pos, &key, &value)) {
+            long key_v = _PyLong_AsInt(key);
+            if (key_v == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Key of option dict should be 32-bit signed int value.");
+                return -1;
+            }
+
+            long value_v = _PyLong_AsInt(value);
+            if (value_v == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Value of option dict should be 32-bit signed int value.");
+                return -1;
+            }
+
+            /* ZSTD_c_compressionLevel */
+            if (key_v == ZSTD_c_compressionLevel) {
+                *compress_level = value_v;
+            }
+
+            /* Set parameter to compress context */
+            zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
+            if (ZSTD_isError(zstd_ret)) {
+                PyErr_Format(state->ZstdError,
+                    "Error when setting option, key %d: %s",
+                    key_v, ZSTD_getErrorName(zstd_ret));
+                return -1;
+            }
+        }
+        return 0;
+    }
+
+    /* Wrong type */
+    PyErr_SetString(PyExc_ValueError, "level_or_option argument wrong type.");
+    return -1;
+}
+
+
 /*[clinic input]
 _zstd.compress
 
@@ -345,62 +411,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
     }
 
     /* Set compressionLevel or options */
-    if (level_or_option == Py_None) {
-        /* 0 means use default compress level */
-        assert(compress_level == 0);
-    } else if (PyLong_Check(level_or_option)) {
-        compress_level = PyLong_AsSsize_t(level_or_option);
-        if (compress_level == -1 && PyErr_Occurred()) {
-            goto error;
-        }
-
-        if (compress_level > INT32_MAX || compress_level < INT32_MIN) {
-            PyErr_SetString(PyExc_ValueError,
-                            "compress_level argument should between -2147483648 and 2147483647.");
-            goto error;
-        }
-    } else if (PyDict_Check(level_or_option)) {
-        PyObject *key, *value;
-        Py_ssize_t pos = 0;
-
-        while (PyDict_Next(level_or_option, &pos, &key, &value)) {
-            long key_v = PyLong_AsLong(key);
-            if (key_v == -1 && PyErr_Occurred()) {
-                PyErr_SetString(PyExc_ValueError,
-                                "Key of option dict should be int.");
-                goto error;
-            }
-
-            long value_v = PyLong_AsLong(value);
-            if (value_v == -1 && PyErr_Occurred()) {
-                PyErr_SetString(PyExc_ValueError,
-                                "Key of option dict should be int.");
-                goto error;
-            }
-
-            if (key_v > INT32_MAX || key_v < INT32_MIN ||
-                value_v > INT32_MAX || value_v < INT32_MIN) {
-                PyErr_SetString(PyExc_ValueError,
-                                "Key and value of option should between -2147483648 and 2147483647.");
-                goto error;
-            }
-
-            /* ZSTD_c_compressionLevel */
-            if (key_v == ZSTD_c_compressionLevel) {
-                compress_level = value_v;
-            }
-
-            /* Set parameter to compress context */
-            zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
-            if (ZSTD_isError(zstd_ret)) {
-                PyErr_Format(state->ZstdError,
-                             "Error when setting option, key %d: %s",
-                             key_v, ZSTD_getErrorName(zstd_ret));
-                goto error;
-            }
-        }
-    } else {
-        PyErr_SetString(PyExc_ValueError, "level_or_option argument wrong type.");
+    if (set_c_parameters(state, cctx, level_or_option, &compress_level) < 0) {
         goto error;
     }
 
