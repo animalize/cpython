@@ -33,7 +33,7 @@ typedef struct {
     PyThread_type_lock d_dict_lock;
 } ZstdDict;
 
-static ZSTD_CDict*
+static inline ZSTD_CDict*
 _get_CDict(ZstdDict *self, int compressionLevel) {
 
     ACQUIRE_LOCK(self->c_dict_lock);
@@ -48,7 +48,7 @@ _get_CDict(ZstdDict *self, int compressionLevel) {
     return self->c_dict;
 }
 
-static ZSTD_DDict*
+static inline ZSTD_DDict*
 _get_DDict(ZstdDict *self) {
 
     ACQUIRE_LOCK(self->d_dict_lock);
@@ -299,15 +299,9 @@ get_zstd_state(PyObject *module)
 
 static int
 set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
-                 PyObject *level_or_option, Py_ssize_t *compress_level)
+                 PyObject *level_or_option, int *compress_level)
 {
     size_t zstd_ret;
-
-    /* Use default compress options */
-    if (level_or_option == Py_None) {
-        assert(*compress_level == 0);  
-        return 0;
-    }
 
     /* Integer compression level */
     if (PyLong_Check(level_or_option)) {
@@ -326,14 +320,14 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
         Py_ssize_t pos = 0;
 
         while (PyDict_Next(level_or_option, &pos, &key, &value)) {
-            long key_v = _PyLong_AsInt(key);
+            int key_v = _PyLong_AsInt(key);
             if (key_v == -1 && PyErr_Occurred()) {
                 PyErr_SetString(PyExc_ValueError,
                                 "Key of option dict should be 32-bit signed int value.");
                 return -1;
             }
 
-            long value_v = _PyLong_AsInt(value);
+            int value_v = _PyLong_AsInt(value);
             if (value_v == -1 && PyErr_Occurred()) {
                 PyErr_SetString(PyExc_ValueError,
                                 "Value of option dict should be 32-bit signed int value.");
@@ -358,10 +352,33 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
     }
 
     /* Wrong type */
-    PyErr_SetString(PyExc_ValueError, "level_or_option argument wrong type.");
+    PyErr_SetString(PyExc_TypeError, "level_or_option argument wrong type.");
     return -1;
 }
 
+
+static int
+load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
+            PyObject* dict, int compress_level)
+{
+    size_t zstd_ret;
+    
+    if (Py_TYPE(dict) == state->ZstdDict_type) {
+        /* Reference a prepared dictionary */
+        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, compress_level));
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            return -1;
+        }
+        return 0;
+    }
+
+    /* Wrong type */
+    PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
+    return -1;
+}
 
 /*[clinic input]
 _zstd.compress
@@ -391,7 +408,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
     size_t zstd_ret;
     PyObject *ret;
     _zstd_state *state = get_zstd_state(module);
-    Py_ssize_t compress_level = 0;
+    int compress_level = 0;
 
     /* Prepare input & output buffers */
     in.src = data->buf;
@@ -411,23 +428,17 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
     }
 
     /* Set compressionLevel or options */
-    if (set_c_parameters(state, cctx, level_or_option, &compress_level) < 0) {
-        goto error;
-    }
-
-    /* Load dict to compress context */
-    if (dict == Py_None) {
-        /* No dict */
-    } else if (Py_TYPE(dict) == state->ZstdDict_type) {
-        /* Reference a prepared dictionary */
-        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, (int)compress_level));
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+    if (level_or_option != Py_None) {
+        if (set_c_parameters(state, cctx, level_or_option, &compress_level) < 0) {
             goto error;
         }
-    } else {
-        PyErr_SetString(PyExc_ValueError, "dict argument should be ZstdDict object.");
-        goto error;
+    }
+
+    /* Load dictionary to compress context */
+    if (dict != Py_None) {
+        if (load_c_dict(state, cctx, dict, compress_level) < 0) {
+            goto error;
+        }
     }
 
     while(1) {
