@@ -20,7 +20,7 @@ from _zstd import *
 from _zstd import _train_dict, _get_cparam_bounds, _get_dparam_bounds
 import _compression
 
-class cParameter:
+class CompressParameter:
     compressionLevel = ZSTD_c_compressionLevel
     windowLog = ZSTD_c_windowLog
     hashLog = ZSTD_c_hashLog
@@ -43,7 +43,7 @@ class cParameter:
         return _get_cparam_bounds(cParameter)
 
 
-class dParameter:
+class DecompressParameter:
     windowLogMax = ZSTD_d_windowLogMax
 
     @staticmethod

@@ -999,6 +999,8 @@ zstd_exec(PyObject *module)
         }                                                                   \
     } while (0)
 
+    PyObject *temp;
+
     ADD_INT_MACRO(module, ZSTD_c_compressionLevel);
     ADD_INT_MACRO(module, ZSTD_c_windowLog);
     ADD_INT_MACRO(module, ZSTD_c_hashLog);
@@ -1022,7 +1024,7 @@ zstd_exec(PyObject *module)
     state->ZstdError = NULL;
     state->ZstdDict_type = NULL;
 
-    // ZstdError
+    /* ZstdError */
     state->ZstdError = PyErr_NewExceptionWithDoc("_zstd.ZstdError", "Call to zstd failed.", NULL, NULL);
     if (state->ZstdError == NULL) {
         goto error;
@@ -1031,7 +1033,7 @@ zstd_exec(PyObject *module)
         goto error;
     }
 
-    // ZstdDict
+    /* ZstdDict */
     state->ZstdDict_type = (PyTypeObject *)PyType_FromModuleAndSpec(module,
                                                                     &zstddict_type_spec,
                                                                     NULL);
@@ -1041,6 +1043,15 @@ zstd_exec(PyObject *module)
     if (PyModule_AddType(module, (PyTypeObject *)state->ZstdDict_type) < 0) {
         goto error;
     }
+
+    /* zstd_version, ZSTD_versionString() requires zstd v1.3.0+ */
+    if (!(temp = PyUnicode_FromString(ZSTD_versionString()))) {
+        goto error;
+    }
+    if (PyModule_AddObject(module, "zstd_version", temp) < 0) {
+        Py_DECREF(temp);
+        goto error;
+    } 
 
     // state->lzma_decompressor_type = (PyTypeObject *)PyType_FromModuleAndSpec(module,
     //                                                      &lzma_decompressor_type_spec, NULL);
