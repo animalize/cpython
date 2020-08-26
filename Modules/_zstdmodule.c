@@ -25,7 +25,7 @@ typedef struct {
     // Reuseable compress/decompress dictionary.
     // They can be created once and shared by multiple threads concurrently,
     // since its usage is read-only.
-    ZSTD_CDict *c_dict;
+    PyObject *c_dicts;
     ZSTD_DDict *d_dict;
 
     // Thread lock for generating c_dict/d_dict
@@ -33,19 +33,64 @@ typedef struct {
     PyThread_type_lock d_dict_lock;
 } ZstdDict;
 
-static inline ZSTD_CDict*
+void
+free_cdict(PyObject *capsule) {
+    ZSTD_CDict* cdict;
+
+    cdict = PyCapsule_GetPointer(capsule, NULL);
+    ZSTD_freeCDict(cdict);
+}
+
+static ZSTD_CDict*
 _get_CDict(ZstdDict *self, int compressionLevel) {
+    PyObject *level;
+    PyObject *capsule;
+    ZSTD_CDict *cdict;
 
     ACQUIRE_LOCK(self->c_dict_lock);
-    if (self->c_dict == NULL) {
-        Py_BEGIN_ALLOW_THREADS
-        self->c_dict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_buffer),
-                                        Py_SIZE(self->dict_buffer), compressionLevel);
-        Py_END_ALLOW_THREADS
-    }
-    RELEASE_LOCK(self->c_dict_lock);
 
-    return self->c_dict;
+    /* int level object */
+    level = PyLong_FromLong(compressionLevel);
+    if (level == NULL) {
+        goto error;
+    }
+
+    capsule = PyDict_GetItem(self->c_dicts, level);
+
+    if (capsule != NULL) {
+        cdict = PyCapsule_GetPointer(capsule, NULL);
+        goto success;
+    } else {
+        Py_BEGIN_ALLOW_THREADS
+        cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_buffer),
+                                    Py_SIZE(self->dict_buffer), compressionLevel);
+        Py_END_ALLOW_THREADS
+
+        if (cdict == NULL) {
+            goto error;
+        }
+
+        capsule = PyCapsule_New(cdict, NULL, free_cdict);
+        if (capsule == NULL) {
+            ZSTD_freeCDict(cdict);
+            goto error;
+        }
+
+        if (PyDict_SetItem(self->c_dicts, level, capsule) < 0) {
+            Py_DECREF(capsule);
+            goto error;
+        }
+        Py_DECREF(capsule);
+
+        goto success;
+    }
+
+error:
+    cdict = NULL;
+success:
+    Py_XDECREF(level);
+    RELEASE_LOCK(self->c_dict_lock);
+    return cdict;
 }
 
 static inline ZSTD_DDict*
@@ -373,14 +418,22 @@ load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
             PyObject* dict, int compress_level)
 {
     size_t zstd_ret;
+    ZSTD_CDict* c_dict;
     
     if (Py_TYPE(dict) != state->ZstdDict_type) {
         PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
         return -1;
     }
 
+    /* Get ZSTD_CDict */
+    c_dict = _get_CDict((ZstdDict*)dict, compress_level);
+    if (c_dict == NULL) {
+        PyErr_SetString(PyExc_SystemError, "Failed to get ZSTD_CDict.");
+        return -1;
+    }
+
     /* Reference a prepared dictionary */
-    zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, compress_level));
+    zstd_ret = ZSTD_CCtx_refCDict(cctx, c_dict);
 
     /* Check error */
     if (ZSTD_isError(zstd_ret)) {
@@ -666,17 +719,23 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->dict_buffer = NULL;
     self->dict_id = 0;
 
-    self->c_dict = NULL;
+    self->c_dicts = PyDict_New();
+    if (self->c_dicts == NULL) {
+        return NULL;
+    }
+
     self->d_dict = NULL;
     
     self->c_dict_lock = PyThread_allocate_lock();
     if (self->c_dict_lock == NULL) {
+        Py_DECREF(self->c_dicts);
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
         return NULL;
     }
 
     self->d_dict_lock = PyThread_allocate_lock();
     if (self->d_dict_lock == NULL) {
+        Py_DECREF(self->c_dicts);
         PyThread_free_lock(self->c_dict_lock);
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
         return NULL;
@@ -688,9 +747,8 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static void
 _ZstdDict_dealloc(ZstdDict *self)
 {
-    if (self->c_dict) {
-        ZSTD_freeCDict(self->c_dict);
-    }
+    Py_DECREF(self->c_dicts);
+
     if (self->d_dict) {
         ZSTD_freeDDict(self->d_dict);
     }
@@ -702,9 +760,9 @@ _ZstdDict_dealloc(ZstdDict *self)
         PyThread_free_lock(self->d_dict_lock);
     }
 
-    // Release dict_buffer at the end, self->c_dict and self->d_dict
+    // Release dict_buffer at the end, self->c_dicts and self->d_dict
     // may refer to self->dict_buffer.
-    Py_XDECREF(self->dict_buffer);
+    Py_DECREF(self->dict_buffer);
 
     PyTypeObject *tp = Py_TYPE(self);
     tp->tp_free((PyObject *)self);
