@@ -325,27 +325,28 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
     size_t zstd_ret;
     PyObject *ret;
     _zstd_state *state = get_zstd_state(module);
-    int use_dict = 0;
     Py_ssize_t compress_level = 0;
 
-    // Prepare input & output buffers
+    /* Prepare input & output buffers */
     in.src = data->buf;
     in.size = data->len;
     in.pos = 0;
 
+    /* OutputBuffer(OnError)(&buffer) is after `error` label,
+       so initialize the buffer before any `goto error` statement. */
     if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
         goto error;
     }
 
-    // Creat compress context
+    /* Creat compress context */
     cctx = ZSTD_createCCtx();
     if (cctx == NULL) {
         goto error;
     }
 
-    // level or option
+    /* Set compressionLevel or options */
     if (level_or_option == Py_None) {
-        /* 0 means use default compress level. */
+        /* 0 means use default compress level */
         assert(compress_level == 0);
     } else if (PyLong_Check(level_or_option)) {
         compress_level = PyLong_AsSsize_t(level_or_option);
@@ -389,7 +390,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
                 compress_level = value_v;
             }
 
-            /* Set parameter to compress context. */
+            /* Set parameter to compress context */
             zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
             if (ZSTD_isError(zstd_ret)) {
                 PyErr_Format(state->ZstdError,
@@ -403,14 +404,11 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
         goto error;
     }
 
-    /* Load dict to compress context*/
+    /* Load dict to compress context */
     if (dict == Py_None) {
-        /* No dict, no nothing. */
+        /* No dict */
     } else if (Py_TYPE(dict) == state->ZstdDict_type) {
-        Py_INCREF(dict);
-        use_dict = 1;
-
-        /* Reference a prepared compress dictionary. */
+        /* Reference a prepared dictionary */
         zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, (int)compress_level));
         if (ZSTD_isError(zstd_ret)) {
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
@@ -428,13 +426,13 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
         zstd_ret = ZSTD_compressStream2(cctx, &out, &in, ZSTD_e_end);
         Py_END_ALLOW_THREADS
 
-        // Check error
+        /* Check error */
         if (ZSTD_isError(zstd_ret)) {
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
 
-        // Finished
+        /* Finished */
         if (zstd_ret == 0) {
             ret = OutputBuffer(Finish)(&buffer, &out);
             if (ret != NULL) {
@@ -444,7 +442,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
             }
         }
 
-        // Output buffer exhausted, grow the buffer
+        /* Output buffer exhausted, grow the buffer */
         if (out.pos == out.size) {
             if (OutputBuffer(Grow)(&buffer, &out) < 0) {
                 goto error;
@@ -461,9 +459,6 @@ success:
     if (cctx != NULL) {
         ZSTD_freeCCtx(cctx);
     }
-    if (use_dict) {
-        Py_DECREF(dict);
-    }
     return ret;
 }
 
@@ -473,13 +468,19 @@ _zstd.decompress
 
     data: Py_buffer
         Compressed data.
+    dict: object = None
+        Pre-trained dictionary for compression, a ZstdDict object.
+    option: object = None
+        A dictionary for setting various advanced parameters. The default value
+        None means to use zstd's default decompression parameters.
 
 Returns a bytes object containing the uncompressed data.
 [clinic start generated code]*/
 
 static PyObject *
-_zstd_decompress_impl(PyObject *module, Py_buffer *data)
-/*[clinic end generated code: output=69aee3f2cf35b025 input=a603d6aa31e2ef0c]*/
+_zstd_decompress_impl(PyObject *module, Py_buffer *data, PyObject *dict,
+                      PyObject *option)
+/*[clinic end generated code: output=de8e7aa123467657 input=e45ffba2bf54082d]*/
 {
     ZSTD_DCtx *dctx = NULL;
     ZSTD_inBuffer in;
@@ -487,19 +488,80 @@ _zstd_decompress_impl(PyObject *module, Py_buffer *data)
     _BlocksOutputBuffer buffer;
     size_t zstd_ret;
     PyObject *ret;
+    _zstd_state *state = get_zstd_state(module);
 
-    // prepare input & output buffers
+    /* Prepare input & output buffers */
     in.src = data->buf;
     in.size = data->len;
     in.pos = 0;
 
+    /* OutputBuffer(OnError)(&buffer) is after `error` label,
+       so initialize the buffer before any `goto error` statement. */
     if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
         goto error;
     }
 
-    // creat zstd context
+    /* Creat zstd context */
     dctx = ZSTD_createDCtx();
     if (dctx == NULL) {
+        goto error;
+    }
+
+    /* Set option */
+    if (option == Py_None) {
+        /* Use default decompress option */
+    } else if (PyDict_Check(option)) {
+        PyObject *key, *value;
+        Py_ssize_t pos = 0;
+
+        while (PyDict_Next(option, &pos, &key, &value)) {
+            long key_v = PyLong_AsLong(key);
+            if (key_v == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Key of option dict should be int.");
+                goto error;
+            }
+
+            long value_v = PyLong_AsLong(value);
+            if (value_v == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Key of option dict should be int.");
+                goto error;
+            }
+
+            if (key_v > INT32_MAX || key_v < INT32_MIN ||
+                value_v > INT32_MAX || value_v < INT32_MIN) {
+                PyErr_SetString(PyExc_ValueError,
+                                "Key and value of option should between -2147483648 and 2147483647.");
+                goto error;
+            }
+
+            /* Set parameter to compress context */
+            zstd_ret = ZSTD_DCtx_setParameter(dctx, key_v, value_v);
+            if (ZSTD_isError(zstd_ret)) {
+                PyErr_Format(state->ZstdError,
+                             "Error when setting option, key %d: %s",
+                             key_v, ZSTD_getErrorName(zstd_ret));
+                goto error;
+            }
+        }
+    } else {
+        PyErr_SetString(PyExc_ValueError, "option argument wrong type.");
+        goto error;
+    }
+
+    /* Load dict to decompress context */
+    if (dict == Py_None) {
+        /* No dict */
+    } else if (Py_TYPE(dict) == state->ZstdDict_type) {
+        /* Reference a decompress dictionary */
+        zstd_ret = ZSTD_DCtx_refDDict(dctx, _get_DDict((ZstdDict*)dict));
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            goto error;
+        }
+    } else {
+        PyErr_SetString(PyExc_ValueError, "dict argument should be ZstdDict object.");
         goto error;
     }
 
@@ -508,14 +570,13 @@ _zstd_decompress_impl(PyObject *module, Py_buffer *data)
         zstd_ret = ZSTD_decompressStream(dctx, &out , &in);
         Py_END_ALLOW_THREADS
 
-        // check error
+        /* Check error */
         if (ZSTD_isError(zstd_ret)) {
-            _zstd_state *state = get_zstd_state(module);
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
 
-        // finished?
+        /* Finished */
         if (in.pos == in.size) {
             ret = OutputBuffer(Finish)(&buffer, &out);
             if (ret != NULL) {
@@ -525,7 +586,7 @@ _zstd_decompress_impl(PyObject *module, Py_buffer *data)
             }
         }
 
-        // output buffer exhausted, grow the buffer
+        /* Output buffer exhausted, grow the buffer. */
         if (out.pos == out.size) {
             if (OutputBuffer(Grow)(&buffer, &out) < 0) {
                 goto error;
