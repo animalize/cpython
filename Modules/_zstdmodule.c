@@ -34,10 +34,8 @@ typedef struct {
 } ZstdDict;
 
 void
-free_cdict(PyObject *capsule) {
-    ZSTD_CDict* cdict;
-
-    cdict = PyCapsule_GetPointer(capsule, NULL);
+capsule_free_cdict(PyObject *capsule) {
+    ZSTD_CDict* cdict = PyCapsule_GetPointer(capsule, NULL);
     ZSTD_freeCDict(cdict);
 }
 
@@ -63,14 +61,14 @@ _get_CDict(ZstdDict *self, int compressionLevel) {
     } else {
         Py_BEGIN_ALLOW_THREADS
         cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_buffer),
-                                    Py_SIZE(self->dict_buffer), compressionLevel);
+                                 Py_SIZE(self->dict_buffer), compressionLevel);
         Py_END_ALLOW_THREADS
 
         if (cdict == NULL) {
             goto error;
         }
 
-        capsule = PyCapsule_New(cdict, NULL, free_cdict);
+        capsule = PyCapsule_New(cdict, NULL, capsule_free_cdict);
         if (capsule == NULL) {
             ZSTD_freeCDict(cdict);
             goto error;
@@ -81,7 +79,6 @@ _get_CDict(ZstdDict *self, int compressionLevel) {
             goto error;
         }
         Py_DECREF(capsule);
-
         goto success;
     }
 
@@ -534,7 +531,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
             }
         }
 
-        assert(in.pos < in.size);
+        assert(in.pos <= in.size);
     }
 
 error:
@@ -595,14 +592,22 @@ static int
 load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
 {
     size_t zstd_ret;
+    ZSTD_DDict* d_dict;
 
     if (Py_TYPE(dict) != state->ZstdDict_type) {
         PyErr_SetString(PyExc_ValueError, "dict argument should be ZstdDict object.");
         return -1;
     }
 
+    /* Get ZSTD_DDict */
+    d_dict = _get_DDict((ZstdDict*)dict);
+    if (d_dict == NULL) {
+        PyErr_SetString(PyExc_SystemError, "Failed to get ZSTD_DDict.");
+        return -1;
+    }
+
     /* Reference a decompress dictionary */
-    zstd_ret = ZSTD_DCtx_refDDict(dctx, _get_DDict((ZstdDict*)dict));
+    zstd_ret = ZSTD_DCtx_refDDict(dctx, d_dict);
 
     /* Check error */
     if (ZSTD_isError(zstd_ret)) {
@@ -753,12 +758,8 @@ _ZstdDict_dealloc(ZstdDict *self)
         ZSTD_freeDDict(self->d_dict);
     }
 
-    if (self->c_dict_lock != NULL) {
-        PyThread_free_lock(self->c_dict_lock);
-    }
-    if (self->d_dict_lock != NULL) {
-        PyThread_free_lock(self->d_dict_lock);
-    }
+    PyThread_free_lock(self->c_dict_lock);
+    PyThread_free_lock(self->d_dict_lock);
 
     // Release dict_buffer at the end, self->c_dicts and self->d_dict
     // may refer to self->dict_buffer.
