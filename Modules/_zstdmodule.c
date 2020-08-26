@@ -363,21 +363,20 @@ load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
 {
     size_t zstd_ret;
     
-    if (Py_TYPE(dict) == state->ZstdDict_type) {
-        /* Reference a prepared dictionary */
-        zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, compress_level));
-
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-            return -1;
-        }
-        return 0;
+    if (Py_TYPE(dict) != state->ZstdDict_type) {
+        PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
+        return -1;
     }
 
-    /* Wrong type */
-    PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
-    return -1;
+    /* Reference a prepared dictionary */
+    zstd_ret = ZSTD_CCtx_refCDict(cctx, _get_CDict((ZstdDict*)dict, compress_level));
+
+    /* Check error */
+    if (ZSTD_isError(zstd_ret)) {
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+        return -1;
+    }
+    return 0;
 }
 
 /*[clinic input]
@@ -485,6 +484,71 @@ success:
 }
 
 
+static int
+set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
+{
+    size_t zstd_ret;
+    PyObject *key, *value;
+    Py_ssize_t pos;
+
+    if (!PyDict_Check(option)) {
+        PyErr_SetString(PyExc_TypeError, "option argument wrong type.");
+        return -1;
+    }
+
+    pos = 0;
+    while (PyDict_Next(option, &pos, &key, &value)) {
+        int key_v = _PyLong_AsInt(key);
+        if (key_v == -1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                "Key of option dict should be 32-bit signed integer value.");
+            return -1;
+        }
+
+        int value_v = _PyLong_AsInt(value);
+        if (value_v == -1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                "Key of option dict should be 32-bit signed integer value.");
+            return -1;
+        }
+
+        /* Set parameter to compress context */
+        zstd_ret = ZSTD_DCtx_setParameter(dctx, key_v, value_v);
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_Format(state->ZstdError,
+                "Error when setting option, key %d: %s",
+                key_v, ZSTD_getErrorName(zstd_ret));
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+static int
+load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
+{
+    size_t zstd_ret;
+
+    if (Py_TYPE(dict) != state->ZstdDict_type) {
+        PyErr_SetString(PyExc_ValueError, "dict argument should be ZstdDict object.");
+        return -1;
+    }
+
+    /* Reference a decompress dictionary */
+    zstd_ret = ZSTD_DCtx_refDDict(dctx, _get_DDict((ZstdDict*)dict));
+
+    /* Check error */
+    if (ZSTD_isError(zstd_ret)) {
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+        return - 1;
+    }
+    return 0;
+}
+
+
 /*[clinic input]
 _zstd.decompress
 
@@ -530,61 +594,17 @@ _zstd_decompress_impl(PyObject *module, Py_buffer *data, PyObject *dict,
     }
 
     /* Set option */
-    if (option == Py_None) {
-        /* Use default decompress option */
-    } else if (PyDict_Check(option)) {
-        PyObject *key, *value;
-        Py_ssize_t pos = 0;
-
-        while (PyDict_Next(option, &pos, &key, &value)) {
-            long key_v = PyLong_AsLong(key);
-            if (key_v == -1 && PyErr_Occurred()) {
-                PyErr_SetString(PyExc_ValueError,
-                                "Key of option dict should be int.");
-                goto error;
-            }
-
-            long value_v = PyLong_AsLong(value);
-            if (value_v == -1 && PyErr_Occurred()) {
-                PyErr_SetString(PyExc_ValueError,
-                                "Key of option dict should be int.");
-                goto error;
-            }
-
-            if (key_v > INT32_MAX || key_v < INT32_MIN ||
-                value_v > INT32_MAX || value_v < INT32_MIN) {
-                PyErr_SetString(PyExc_ValueError,
-                                "Key and value of option should between -2147483648 and 2147483647.");
-                goto error;
-            }
-
-            /* Set parameter to compress context */
-            zstd_ret = ZSTD_DCtx_setParameter(dctx, key_v, value_v);
-            if (ZSTD_isError(zstd_ret)) {
-                PyErr_Format(state->ZstdError,
-                             "Error when setting option, key %d: %s",
-                             key_v, ZSTD_getErrorName(zstd_ret));
-                goto error;
-            }
+    if (option != Py_None) {
+        if (set_d_parameters(state, dctx, option) < 0) {
+            goto error;
         }
-    } else {
-        PyErr_SetString(PyExc_ValueError, "option argument wrong type.");
-        goto error;
     }
 
     /* Load dict to decompress context */
-    if (dict == Py_None) {
-        /* No dict */
-    } else if (Py_TYPE(dict) == state->ZstdDict_type) {
-        /* Reference a decompress dictionary */
-        zstd_ret = ZSTD_DCtx_refDDict(dctx, _get_DDict((ZstdDict*)dict));
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+    if (dict != Py_None) {
+        if (load_d_dict(state, dctx, dict) < 0) {
             goto error;
         }
-    } else {
-        PyErr_SetString(PyExc_ValueError, "dict argument should be ZstdDict object.");
-        goto error;
     }
 
     while(1) {
