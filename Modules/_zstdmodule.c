@@ -461,24 +461,20 @@ static PyMemberDef _ZstdDict_members[] = {
 
 static PyType_Slot zstddict_slots[] = {
     {Py_tp_methods, _ZstdDict_methods},
+    {Py_tp_members, _ZstdDict_members},
     {Py_tp_new, _ZstdDict_new},
     {Py_tp_dealloc, _ZstdDict_dealloc},
     {Py_tp_init, _zstd_ZstdDict___init__},
+    {Py_tp_repr, _ZstdDict_repr},
     {Py_tp_doc, (char*)_ZstdDict_dict_doc},
     {Py_tp_traverse, _ZstdDict_traverse},
-    {Py_tp_members, _ZstdDict_members},
-    {Py_tp_repr, _ZstdDict_repr},
     {0, 0}
 };
 
 static PyType_Spec zstddict_type_spec = {
     .name = "_zstd.ZstdDict",
     .basicsize = sizeof(ZstdDict),
-    // Calling PyType_GetModuleState() on a subclass is not safe.
-    // lzma_compressor_type_spec does not have Py_TPFLAGS_BASETYPE flag
-    // which prevents to create a subclass.
-    // So calling PyType_GetModuleState() in this file is always safe.
-    .flags = Py_TPFLAGS_DEFAULT,
+    .flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     .slots = zstddict_slots,
 };
 /* ZstdDict code end */
@@ -561,8 +557,13 @@ load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
 {
     size_t zstd_ret;
     ZSTD_CDict* c_dict;
+    int ret;
     
-    if (Py_TYPE(dict) != state->ZstdDict_type) {
+    /* Check dict type */
+    ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
+    if (ret < 0) {
+        return -1;
+    } else if (ret == 0) {
         PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
         return -1;
     }
@@ -738,9 +739,14 @@ load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
 {
     size_t zstd_ret;
     ZSTD_DDict* d_dict;
+    int ret;
 
-    if (Py_TYPE(dict) != state->ZstdDict_type) {
-        PyErr_SetString(PyExc_ValueError, "dict argument should be ZstdDict object.");
+    /* Check dict type */
+    ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
+    if (ret < 0) {
+        return -1;
+    } else if (ret == 0) {
+        PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
         return -1;
     }
 
