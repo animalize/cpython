@@ -253,6 +253,14 @@ typedef struct {
     PyObject *ZstdError;
 } _zstd_state;
 
+static inline _zstd_state*
+get_zstd_state(PyObject *module)
+{
+    void *state = PyModule_GetState(module);
+    assert(state != NULL);
+    return (_zstd_state *)state;
+}
+
 #define ACQUIRE_LOCK(obj) do { \
     if (!PyThread_acquire_lock((obj)->lock, 0)) { \
         Py_BEGIN_ALLOW_THREADS \
@@ -262,15 +270,7 @@ typedef struct {
 #define RELEASE_LOCK(obj) PyThread_release_lock((obj)->lock)
 
 /* ZstdDict code begin */
-static inline _zstd_state*
-get_zstd_state(PyObject *module)
-{
-    void *state = PyModule_GetState(module);
-    assert(state != NULL);
-    return (_zstd_state *)state;
-}
-
-void
+static void
 capsule_free_cdict(PyObject *capsule) {
     ZSTD_CDict* cdict = PyCapsule_GetPointer(capsule, NULL);
     ZSTD_freeCDict(cdict);
