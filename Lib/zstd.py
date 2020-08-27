@@ -1,13 +1,3 @@
-"""Interface to the liblzma compression library.
-
-This module provides a class for reading and writing compressed files,
-classes for incremental (de)compression, and convenience functions for
-one-shot (de)compression.
-
-These classes and functions support both the XZ and legacy LZMA
-container formats, as well as raw compressed data streams.
-"""
-
 __all__ = ('ZstdDict', 'ZstdError',
            'compress', 'decompress', 'train_dict',
            'cParameter', 'dParameter')
@@ -15,12 +5,14 @@ __all__ = ('ZstdDict', 'ZstdError',
 import builtins
 import io
 import os
+import _compression
+from enum import IntEnum
 
 from _zstd import *
 from _zstd import _train_dict, _get_cparam_bounds, _get_dparam_bounds
-import _compression
 
-class CompressParameter:
+
+class CompressParameter(IntEnum):
     compressionLevel = ZSTD_c_compressionLevel
     windowLog = ZSTD_c_windowLog
     hashLog = ZSTD_c_hashLog
@@ -38,17 +30,17 @@ class CompressParameter:
     checksumFlag = ZSTD_c_checksumFlag
     dictIDFlag = ZSTD_c_dictIDFlag
 
-    @staticmethod
-    def get_bounds(cParameter):
-        return _get_cparam_bounds(cParameter)
+    def bounds(self):
+        """Return lower and upper bounds of a parameter, both inclusive."""
+        return _get_cparam_bounds(self.value)
 
 
-class DecompressParameter:
+class DecompressParameter(IntEnum):
     windowLogMax = ZSTD_d_windowLogMax
 
-    @staticmethod
-    def get_bounds(dParameter):
-        return _get_dparam_bounds(dParameter)
+    def bounds(self):
+        """Return lower and upper bounds of a parameter, both inclusive."""
+        return _get_dparam_bounds(self.value)
 
 
 def train_dict(iterable_of_chunks, dict_size=100*1024):
