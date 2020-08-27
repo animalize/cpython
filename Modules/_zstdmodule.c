@@ -114,7 +114,8 @@ class _zstd.ZstdDict "ZstdDict *" "&ZstdDict_Type"
 
 #include "clinic\_zstdmodule.c.h"
 
-#ifdef UCHAR_MAX
+#define BLOCK_OUTPUT_BUFFER_CODE_BLOCK
+#ifdef BLOCK_OUTPUT_BUFFER_CODE_BLOCK
 /* _BlocksOutputBuffer code */
 typedef struct {
     /* List of blocks */
@@ -324,7 +325,8 @@ _BlocksOutputBuffer_OnError(_BlocksOutputBuffer *buffer)
 }
 
 #define OutputBuffer(F) _BlocksOutputBuffer_##F
-#endif /* _BlocksOutputBuffer code end */
+#endif
+#undef BLOCK_OUTPUT_BUFFER_CODE_BLOCK /* _BlocksOutputBuffer code end */
 
 typedef struct {
     PyTypeObject *ZstdDict_type;
