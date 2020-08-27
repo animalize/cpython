@@ -6,14 +6,6 @@
 #include "dictBuilder\zdict.h"
 
 
-#define ACQUIRE_LOCK(obj) do { \
-    if (!PyThread_acquire_lock((obj)->lock, 0)) { \
-        Py_BEGIN_ALLOW_THREADS \
-        PyThread_acquire_lock((obj)->lock, 1); \
-        Py_END_ALLOW_THREADS \
-    } } while (0)
-#define RELEASE_LOCK(obj) PyThread_release_lock((obj)->lock)
-
 typedef struct {
     PyObject_HEAD
 
@@ -33,78 +25,6 @@ typedef struct {
     /* Thread lock for generating ZSTD_CDict/ZSTD_DDict */
     PyThread_type_lock lock;
 } ZstdDict;
-
-void
-capsule_free_cdict(PyObject *capsule) {
-    ZSTD_CDict* cdict = PyCapsule_GetPointer(capsule, NULL);
-    ZSTD_freeCDict(cdict);
-}
-
-static ZSTD_CDict*
-_get_CDict(ZstdDict *self, int compressionLevel) {
-    PyObject *level = NULL;
-    PyObject *capsule;
-    ZSTD_CDict *cdict;
-
-    ACQUIRE_LOCK(self);
-
-    /* int level object */
-    level = PyLong_FromLong(compressionLevel);
-    if (level == NULL) {
-        goto error;
-    }
-
-    capsule = PyDict_GetItem(self->c_dicts, level);
-
-    if (capsule != NULL) {
-        cdict = PyCapsule_GetPointer(capsule, NULL);
-        goto success;
-    } else {
-        Py_BEGIN_ALLOW_THREADS
-        cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_content),
-                                 Py_SIZE(self->dict_content), compressionLevel);
-        Py_END_ALLOW_THREADS
-
-        if (cdict == NULL) {
-            goto error;
-        }
-
-        capsule = PyCapsule_New(cdict, NULL, capsule_free_cdict);
-        if (capsule == NULL) {
-            ZSTD_freeCDict(cdict);
-            goto error;
-        }
-
-        if (PyDict_SetItem(self->c_dicts, level, capsule) < 0) {
-            Py_DECREF(capsule);
-            goto error;
-        }
-        Py_DECREF(capsule);
-        goto success;
-    }
-
-error:
-    cdict = NULL;
-success:
-    Py_XDECREF(level);
-    RELEASE_LOCK(self);
-    return cdict;
-}
-
-static inline ZSTD_DDict*
-_get_DDict(ZstdDict *self) {
-
-    ACQUIRE_LOCK(self);
-    if (self->d_dict == NULL) {
-        Py_BEGIN_ALLOW_THREADS
-        self->d_dict = ZSTD_createDDict(PyBytes_AS_STRING(self->dict_content),
-                                        Py_SIZE(self->dict_content));
-        Py_END_ALLOW_THREADS
-    }
-    RELEASE_LOCK(self);
-
-    return self->d_dict;
-}
 
 /*[clinic input]
 module _zstd
@@ -333,6 +253,15 @@ typedef struct {
     PyObject *ZstdError;
 } _zstd_state;
 
+#define ACQUIRE_LOCK(obj) do { \
+    if (!PyThread_acquire_lock((obj)->lock, 0)) { \
+        Py_BEGIN_ALLOW_THREADS \
+        PyThread_acquire_lock((obj)->lock, 1); \
+        Py_END_ALLOW_THREADS \
+    } } while (0)
+#define RELEASE_LOCK(obj) PyThread_release_lock((obj)->lock)
+
+/* ZstdDict code begin */
 static inline _zstd_state*
 get_zstd_state(PyObject *module)
 {
@@ -340,6 +269,219 @@ get_zstd_state(PyObject *module)
     assert(state != NULL);
     return (_zstd_state *)state;
 }
+
+void
+capsule_free_cdict(PyObject *capsule) {
+    ZSTD_CDict* cdict = PyCapsule_GetPointer(capsule, NULL);
+    ZSTD_freeCDict(cdict);
+}
+
+static ZSTD_CDict*
+_get_CDict(ZstdDict *self, int compressionLevel) {
+    PyObject *level = NULL;
+    PyObject *capsule;
+    ZSTD_CDict *cdict;
+
+    ACQUIRE_LOCK(self);
+
+    /* int level object */
+    level = PyLong_FromLong(compressionLevel);
+    if (level == NULL) {
+        goto error;
+    }
+
+    capsule = PyDict_GetItem(self->c_dicts, level);
+
+    if (capsule != NULL) {
+        cdict = PyCapsule_GetPointer(capsule, NULL);
+        goto success;
+    } else {
+        Py_BEGIN_ALLOW_THREADS
+        cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_content),
+                                 Py_SIZE(self->dict_content), compressionLevel);
+        Py_END_ALLOW_THREADS
+
+        if (cdict == NULL) {
+            goto error;
+        }
+
+        capsule = PyCapsule_New(cdict, NULL, capsule_free_cdict);
+        if (capsule == NULL) {
+            ZSTD_freeCDict(cdict);
+            goto error;
+        }
+
+        if (PyDict_SetItem(self->c_dicts, level, capsule) < 0) {
+            Py_DECREF(capsule);
+            goto error;
+        }
+        Py_DECREF(capsule);
+        goto success;
+    }
+
+error:
+    cdict = NULL;
+success:
+    Py_XDECREF(level);
+    RELEASE_LOCK(self);
+    return cdict;
+}
+
+static inline ZSTD_DDict*
+_get_DDict(ZstdDict *self) {
+
+    ACQUIRE_LOCK(self);
+    if (self->d_dict == NULL) {
+        Py_BEGIN_ALLOW_THREADS
+        self->d_dict = ZSTD_createDDict(PyBytes_AS_STRING(self->dict_content),
+                                        Py_SIZE(self->dict_content));
+        Py_END_ALLOW_THREADS
+    }
+    RELEASE_LOCK(self);
+
+    return self->d_dict;
+}
+
+static PyObject*
+_ZstdDict_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    ZstdDict* self;
+    self = (ZstdDict*)type->tp_alloc(type, 0);
+
+    self->dict_content = NULL;
+    self->dict_id = 0;
+
+    self->c_dicts = PyDict_New();
+    if (self->c_dicts == NULL) {
+        return NULL;
+    }
+
+    self->d_dict = NULL;
+
+    self->lock = PyThread_allocate_lock();
+    if (self->lock == NULL) {
+        Py_DECREF(self->c_dicts);
+        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
+        return NULL;
+    }
+
+    return (PyObject*)self;
+}
+
+static void
+_ZstdDict_dealloc(ZstdDict* self)
+{
+    Py_DECREF(self->c_dicts);
+
+    if (self->d_dict) {
+        ZSTD_freeDDict(self->d_dict);
+    }
+
+    PyThread_free_lock(self->lock);
+
+    /* Release dict_buffer at the end, self->c_dicts and self->d_dict
+       may refer to self->dict_buffer. */
+    Py_DECREF(self->dict_content);
+
+    PyTypeObject* tp = Py_TYPE(self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
+}
+
+/*[clinic input]
+_zstd.ZstdDict.__init__
+
+    dict_data: object
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+[clinic start generated code]*/
+
+static int
+_zstd_ZstdDict___init___impl(ZstdDict* self, PyObject* dict_data)
+/*[clinic end generated code: output=fc8c5b06f93621d8 input=0af5a98ba7fa7882]*/
+{
+    if (!PyBytes_Check(dict_data)) {
+        PyErr_SetString(PyExc_TypeError, "dict_data should be bytes object.");
+        goto error;
+    }
+
+    Py_INCREF(dict_data);
+    self->dict_content = dict_data;
+
+    // get dict_id
+    self->dict_id = ZDICT_getDictID(PyBytes_AS_STRING(dict_data), Py_SIZE(dict_data));
+    if (self->dict_id == 0) {
+        PyErr_SetString(PyExc_ValueError, "Not a valid Zstd dictionary content.");
+        goto error;
+    }
+
+    return 0;
+
+error:
+    Py_XDECREF(self->dict_content);
+    return -1;
+}
+
+static PyMethodDef _ZstdDict_methods[] = {
+    {NULL}
+};
+
+PyDoc_STRVAR(_ZstdDict_dict_doc,
+    "Zstd dictionary.");
+
+PyDoc_STRVAR(ZstdDict_dictid_doc,
+    "ID of Zstd dictionary, a 32-bit unsigned int value.");
+
+PyDoc_STRVAR(ZstdDict_dictbuffer_doc,
+    "The content of the Zstd dictionary, a bytes object.");
+
+static int
+_ZstdDict_traverse(ZstdDict* self, visitproc visit, void* arg)
+{
+    Py_VISIT(Py_TYPE(self));
+    return 0;
+}
+
+static PyObject*
+_ZstdDict_repr(ZstdDict* dict)
+{
+    char buf[128];
+    PyOS_snprintf(buf, sizeof(buf),
+        "<ZstdDict dict_id=%u dict_size=%zd>",
+        dict->dict_id, Py_SIZE(dict->dict_content));
+
+    return PyUnicode_FromString(buf);
+}
+
+static PyMemberDef _ZstdDict_members[] = {
+    {"dict_id", T_UINT, offsetof(ZstdDict, dict_id), READONLY, ZstdDict_dictid_doc},
+    {"dict_content", T_OBJECT_EX, offsetof(ZstdDict, dict_content), READONLY, ZstdDict_dictbuffer_doc},
+    {NULL}
+};
+
+static PyType_Slot zstddict_slots[] = {
+    {Py_tp_methods, _ZstdDict_methods},
+    {Py_tp_new, _ZstdDict_new},
+    {Py_tp_dealloc, _ZstdDict_dealloc},
+    {Py_tp_init, _zstd_ZstdDict___init__},
+    {Py_tp_doc, (char*)_ZstdDict_dict_doc},
+    {Py_tp_traverse, _ZstdDict_traverse},
+    {Py_tp_members, _ZstdDict_members},
+    {Py_tp_repr, _ZstdDict_repr},
+    {0, 0}
+};
+
+static PyType_Spec zstddict_type_spec = {
+    .name = "_zstd.ZstdDict",
+    .basicsize = sizeof(ZstdDict),
+    // Calling PyType_GetModuleState() on a subclass is not safe.
+    // lzma_compressor_type_spec does not have Py_TPFLAGS_BASETYPE flag
+    // which prevents to create a subclass.
+    // So calling PyType_GetModuleState() in this file is always safe.
+    .flags = Py_TPFLAGS_DEFAULT,
+    .slots = zstddict_slots,
+};
+/* ZstdDict code end */
 
 
 static int
@@ -718,142 +860,6 @@ success:
     return ret;
 }
 
-static PyObject *
-_ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    ZstdDict *self;
-    self = (ZstdDict *) type->tp_alloc(type, 0);
-
-    self->dict_content = NULL;
-    self->dict_id = 0;
-
-    self->c_dicts = PyDict_New();
-    if (self->c_dicts == NULL) {
-        return NULL;
-    }
-
-    self->d_dict = NULL;
-    
-    self->lock = PyThread_allocate_lock();
-    if (self->lock == NULL) {
-        Py_DECREF(self->c_dicts);
-        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
-        return NULL;
-    }
-
-    return (PyObject *)self;
-}
-
-static void
-_ZstdDict_dealloc(ZstdDict *self)
-{
-    Py_DECREF(self->c_dicts);
-
-    if (self->d_dict) {
-        ZSTD_freeDDict(self->d_dict);
-    }
-
-    PyThread_free_lock(self->lock);
-
-    /* Release dict_buffer at the end, self->c_dicts and self->d_dict
-       may refer to self->dict_buffer. */
-    Py_DECREF(self->dict_content);
-
-    PyTypeObject *tp = Py_TYPE(self);
-    tp->tp_free((PyObject *)self);
-    Py_DECREF(tp);
-}
-
-/*[clinic input]
-_zstd.ZstdDict.__init__
-
-    dict_data: object
-
-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-[clinic start generated code]*/
-
-static int
-_zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_data)
-/*[clinic end generated code: output=fc8c5b06f93621d8 input=0af5a98ba7fa7882]*/
-{
-    if (!PyBytes_Check(dict_data)) {
-        PyErr_SetString(PyExc_TypeError, "dict_data should be bytes object.");
-        goto error;
-    }
-
-    Py_INCREF(dict_data);
-    self->dict_content = dict_data;
-    
-    // get dict_id
-    self->dict_id = ZDICT_getDictID(PyBytes_AS_STRING(dict_data), Py_SIZE(dict_data));
-    if (self->dict_id == 0) {
-        PyErr_SetString(PyExc_ValueError, "Not a valid Zstd dictionary content.");
-        goto error;
-    }
-
-    return 0;
-
-error:
-    Py_XDECREF(self->dict_content);
-    return -1;
-}
-
-static PyMethodDef _ZstdDict_methods[] = {
-    {NULL}
-};
-
-PyDoc_STRVAR(ZstdDict_dictid_doc,
-"ID of the Zstd dictionary, a 32-bit unsigned int value.");
-
-PyDoc_STRVAR(ZstdDict_dictbuffer_doc,
-"The content of the Zstd dictionary, a bytes object.");
-
-static int
-_ZstdDict_traverse(ZstdDict *self, visitproc visit, void *arg)
-{
-    Py_VISIT(Py_TYPE(self));
-    return 0;
-}
-
-static PyObject *
-_ZstdDict_repr(ZstdDict *dict)
-{
-    char buf[128];
-    PyOS_snprintf(buf, sizeof(buf),
-                  "<ZstdDict dict_id=%u dict_size=%zd>",
-                  dict->dict_id, Py_SIZE(dict->dict_content));
-
-    return PyUnicode_FromString(buf);
-}
-
-static PyMemberDef _ZstdDict_members[] = {
-    {"dict_id", T_UINT, offsetof(ZstdDict, dict_id), READONLY, ZstdDict_dictid_doc},
-    {"dict_content", T_OBJECT_EX, offsetof(ZstdDict, dict_content), READONLY, ZstdDict_dictbuffer_doc},
-    {NULL}
-};
-
-static PyType_Slot zstddict_slots[] = {
-    {Py_tp_methods, _ZstdDict_methods},
-    {Py_tp_new, _ZstdDict_new},
-    {Py_tp_dealloc, _ZstdDict_dealloc},
-    {Py_tp_init, _zstd_ZstdDict___init__},
-    // {Py_tp_doc, (char *)Compressor_doc},
-    {Py_tp_traverse, _ZstdDict_traverse},
-    {Py_tp_members, _ZstdDict_members},
-    {Py_tp_repr, _ZstdDict_repr},
-    {0, 0}
-};
-
-static PyType_Spec zstddict_type_spec = {
-    .name = "_zstd.ZstdDict",
-    .basicsize = sizeof(ZstdDict),
-    // Calling PyType_GetModuleState() on a subclass is not safe.
-    // lzma_compressor_type_spec does not have Py_TPFLAGS_BASETYPE flag
-    // which prevents to create a subclass.
-    // So calling PyType_GetModuleState() in this file is always safe.
-    .flags = Py_TPFLAGS_DEFAULT,
-    .slots = zstddict_slots,
-};
 
 /*[clinic input]
 _zstd._train_dict
