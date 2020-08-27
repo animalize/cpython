@@ -391,35 +391,35 @@ _ZstdDict_dealloc(ZstdDict* self)
 /*[clinic input]
 _zstd.ZstdDict.__init__
 
-    dict_data: object
+    dict_content: object
+        Dictionary's content, a bytes object.
 
-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Initialize ZstdDict object.
 [clinic start generated code]*/
 
 static int
-_zstd_ZstdDict___init___impl(ZstdDict* self, PyObject* dict_data)
-/*[clinic end generated code: output=fc8c5b06f93621d8 input=0af5a98ba7fa7882]*/
+_zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
+/*[clinic end generated code: output=49ae79dcbb8ad2df input=85b3c5d16d12a001]*/
 {
-    if (!PyBytes_Check(dict_data)) {
-        PyErr_SetString(PyExc_TypeError, "dict_data should be bytes object.");
-        goto error;
+    /* Check dict_content's type */
+    if (!PyBytes_Check(dict_content)) {
+        PyErr_SetString(PyExc_TypeError, "dict_content should be bytes object.");
+        return -1;
     }
 
-    Py_INCREF(dict_data);
-    self->dict_content = dict_data;
-
-    // get dict_id
-    self->dict_id = ZDICT_getDictID(PyBytes_AS_STRING(dict_data), Py_SIZE(dict_data));
+    /* Get dict_id */
+    self->dict_id = ZDICT_getDictID(PyBytes_AS_STRING(dict_content),
+                                    Py_SIZE(dict_content));
     if (self->dict_id == 0) {
         PyErr_SetString(PyExc_ValueError, "Not a valid Zstd dictionary content.");
-        goto error;
+        return -1;
     }
 
-    return 0;
+    /* Set dict_content */
+    Py_INCREF(dict_content);
+    self->dict_content = dict_content;
 
-error:
-    Py_XDECREF(self->dict_content);
-    return -1;
+    return 0;
 }
 
 static PyMethodDef _ZstdDict_methods[] = {

@@ -2,6 +2,40 @@
 preserve
 [clinic start generated code]*/
 
+PyDoc_STRVAR(_zstd_ZstdDict___init____doc__,
+"ZstdDict(dict_content)\n"
+"--\n"
+"\n"
+"Initialize ZstdDict object.\n"
+"\n"
+"  dict_content\n"
+"    Dictionary\'s content, a bytes object.");
+
+static int
+_zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content);
+
+static int
+_zstd_ZstdDict___init__(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    int return_value = -1;
+    static const char * const _keywords[] = {"dict_content", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "ZstdDict", 0};
+    PyObject *argsbuf[1];
+    PyObject * const *fastargs;
+    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
+    PyObject *dict_content;
+
+    fastargs = _PyArg_UnpackKeywords(_PyTuple_CAST(args)->ob_item, nargs, kwargs, NULL, &_parser, 1, 1, 0, argsbuf);
+    if (!fastargs) {
+        goto exit;
+    }
+    dict_content = fastargs[0];
+    return_value = _zstd_ZstdDict___init___impl((ZstdDict *)self, dict_content);
+
+exit:
+    return return_value;
+}
+
 PyDoc_STRVAR(_zstd_compress__doc__,
 "compress($module, /, data, level_or_option=None, dict=None)\n"
 "--\n"
@@ -136,37 +170,6 @@ exit:
     return return_value;
 }
 
-PyDoc_STRVAR(_zstd_ZstdDict___init____doc__,
-"ZstdDict(dict_data)\n"
-"--\n"
-"\n"
-"xxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
-static int
-_zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_data);
-
-static int
-_zstd_ZstdDict___init__(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    int return_value = -1;
-    static const char * const _keywords[] = {"dict_data", NULL};
-    static _PyArg_Parser _parser = {NULL, _keywords, "ZstdDict", 0};
-    PyObject *argsbuf[1];
-    PyObject * const *fastargs;
-    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
-    PyObject *dict_data;
-
-    fastargs = _PyArg_UnpackKeywords(_PyTuple_CAST(args)->ob_item, nargs, kwargs, NULL, &_parser, 1, 1, 0, argsbuf);
-    if (!fastargs) {
-        goto exit;
-    }
-    dict_data = fastargs[0];
-    return_value = _zstd_ZstdDict___init___impl((ZstdDict *)self, dict_data);
-
-exit:
-    return return_value;
-}
-
 PyDoc_STRVAR(_zstd__train_dict__doc__,
 "_train_dict($module, /, dst_data, dst_data_sizes, dict_size)\n"
 "--\n"
@@ -288,4 +291,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=3b3f43dbeb5deae5 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=fd30e6dc27124aac input=a9049054013a1b77]*/
