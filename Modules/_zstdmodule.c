@@ -353,7 +353,7 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
         *compress_level = _PyLong_AsInt(level_or_option);
         if (*compress_level == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError,
-                            "Compress level out of range.");
+                            "Compress level should be 32-bit signed int value.");
             return -1;
         }
 
@@ -390,7 +390,7 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
                 return -1;
             }
 
-            /* ZSTD_c_compressionLevel */
+            /* Get ZSTD_c_compressionLevel for generating ZSTD_CDICT */
             if (key_v == ZSTD_c_compressionLevel) {
                 *compress_level = value_v;
             }
@@ -399,8 +399,8 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
             zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
             if (ZSTD_isError(zstd_ret)) {
                 PyErr_Format(state->ZstdError,
-                    "Error when setting option, key %d: %s",
-                    key_v, ZSTD_getErrorName(zstd_ret));
+                    "Error when setting the %dth parameter in option argument: %s",
+                    pos, ZSTD_getErrorName(zstd_ret));
                 return -1;
             }
         }
@@ -490,7 +490,7 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
         goto error;
     }
 
-    /* Set compressionLevel or options */
+    /* Set compressionLevel/options to compress context */
     if (level_or_option != Py_None) {
         if (set_c_parameters(state, cctx, level_or_option, &compress_level) < 0) {
             goto error;
@@ -572,7 +572,7 @@ set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
         int value_v = _PyLong_AsInt(value);
         if (value_v == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError,
-                "Key of option dict should be 32-bit signed integer value.");
+                "Value of option dict should be 32-bit signed integer value.");
             return -1;
         }
 
@@ -582,8 +582,8 @@ set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
             PyErr_Format(state->ZstdError,
-                "Error when setting option, key %d: %s",
-                key_v, ZSTD_getErrorName(zstd_ret));
+                "Error when setting the %dth parameter in option argument: %s",
+                pos, ZSTD_getErrorName(zstd_ret));
             return -1;
         }
     }
@@ -665,7 +665,7 @@ _zstd_decompress_impl(PyObject *module, Py_buffer *data, PyObject *dict,
         goto error;
     }
 
-    /* Set option */
+    /* Set options to decompress context */
     if (option != Py_None) {
         if (set_d_parameters(state, dctx, option) < 0) {
             goto error;
