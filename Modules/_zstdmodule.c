@@ -763,7 +763,7 @@ load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
     /* Check error */
     if (ZSTD_isError(zstd_ret)) {
         PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-        return - 1;
+        return -1;
     }
     return 0;
 }
