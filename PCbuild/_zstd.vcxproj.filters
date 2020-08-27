@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\Modules\_zstdmodule.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\dictBuilder\cover.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\dictBuilder\divsufsort.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\common\entropy_common.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\common\error_private.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\dictBuilder\fastcover.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\fse_compress.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\common\fse_decompress.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\hist.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\huf_compress.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\decompress\huf_decompress.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\common\pool.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\common\threading.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\common\xxhash.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\dictBuilder\zdict.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\common\zstd_common.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_compress.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_compress_literals.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_compress_sequences.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_compress_superblock.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\decompress\zstd_ddict.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\decompress\zstd_decompress.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\decompress\zstd_decompress_block.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_double_fast.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_fast.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_lazy.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_ldm.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstd_opt.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="$(zstdDir)\compress\zstdmt_compress.c">
+      <Filter>Source Files\zstd</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(zstdDir)\lib\zstd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(zstdDir)\lib\dictBuilder\zdict.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{7fb54f41-657b-485a-b13d-c725a62821b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\zstd">
+      <UniqueIdentifier>{7099f549-734a-419c-9c37-7cc1f7d6a93f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{c9cf1f59-f59e-4981-abb8-5e065e02376b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{212ab3f3-e57a-4710-98be-7901f8ed7f42}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\PC\python_nt.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
