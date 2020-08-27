@@ -59,7 +59,7 @@
     <sqlite3Dir>$(ExternalsDir)sqlite-3.32.3.0\</sqlite3Dir>
     <bz2Dir>$(ExternalsDir)bzip2-1.0.6\</bz2Dir>
     <lzmaDir>$(ExternalsDir)xz-5.2.2\</lzmaDir>
-    <zstdDir>$(ExternalsDir)zstd-1.4.5\lib\</zstdDir>
+    <zstdDir>$(ExternalsDir)zstd-1.4.5\</zstdDir>
     <libffiDir>$(ExternalsDir)libffi\</libffiDir>
     <libffiOutDir>$(ExternalsDir)libffi\$(ArchName)\</libffiOutDir>
     <libffiIncludeDir>$(libffiOutDir)include</libffiIncludeDir>

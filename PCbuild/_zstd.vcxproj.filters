@@ -4,88 +4,88 @@
     <ClCompile Include="..\Modules\_zstdmodule.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\dictBuilder\cover.c">
+    <ClCompile Include="$(zstdDir)\lib\dictBuilder\cover.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\dictBuilder\divsufsort.c">
+    <ClCompile Include="$(zstdDir)\lib\dictBuilder\divsufsort.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\common\entropy_common.c">
+    <ClCompile Include="$(zstdDir)\lib\common\entropy_common.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\common\error_private.c">
+    <ClCompile Include="$(zstdDir)\lib\common\error_private.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\dictBuilder\fastcover.c">
+    <ClCompile Include="$(zstdDir)\lib\dictBuilder\fastcover.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\fse_compress.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\fse_compress.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\common\fse_decompress.c">
+    <ClCompile Include="$(zstdDir)\lib\common\fse_decompress.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\hist.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\hist.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\huf_compress.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\huf_compress.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\decompress\huf_decompress.c">
+    <ClCompile Include="$(zstdDir)\lib\decompress\huf_decompress.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\common\pool.c">
+    <ClCompile Include="$(zstdDir)\lib\common\pool.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\common\threading.c">
+    <ClCompile Include="$(zstdDir)\lib\common\threading.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\common\xxhash.c">
+    <ClCompile Include="$(zstdDir)\lib\common\xxhash.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\dictBuilder\zdict.c">
+    <ClCompile Include="$(zstdDir)\lib\dictBuilder\zdict.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\common\zstd_common.c">
+    <ClCompile Include="$(zstdDir)\lib\common\zstd_common.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_compress.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_compress.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_compress_literals.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_compress_literals.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_compress_sequences.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_compress_sequences.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_compress_superblock.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_compress_superblock.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\decompress\zstd_ddict.c">
+    <ClCompile Include="$(zstdDir)\lib\decompress\zstd_ddict.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\decompress\zstd_decompress.c">
+    <ClCompile Include="$(zstdDir)\lib\decompress\zstd_decompress.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\decompress\zstd_decompress_block.c">
+    <ClCompile Include="$(zstdDir)\lib\decompress\zstd_decompress_block.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_double_fast.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_double_fast.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_fast.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_fast.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_lazy.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_lazy.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_ldm.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_ldm.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstd_opt.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstd_opt.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
-    <ClCompile Include="$(zstdDir)\compress\zstdmt_compress.c">
+    <ClCompile Include="$(zstdDir)\lib\compress\zstdmt_compress.c">
       <Filter>Source Files\zstd</Filter>
     </ClCompile>
   </ItemGroup>
