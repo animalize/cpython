@@ -561,6 +561,7 @@ error:
 }
 
 
+/* Set compressLevel or compress parameters to compress context. */
 static int
 set_c_parameters(_zstd_state* state, ZSTD_CCtx* cctx,
     PyObject* level_or_option, int* compress_level)
@@ -631,7 +632,7 @@ set_c_parameters(_zstd_state* state, ZSTD_CCtx* cctx,
     return -1;
 }
 
-
+/* Load dictionary (ZSTD_CDict instance) to compress context (ZSTD_CCtx instance). */
 static int
 load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
     PyObject* dict, int compress_level)
@@ -668,6 +669,8 @@ load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
     return 0;
 }
 
+
+/* Set decompress parameters to decompress context. */
 static int
 set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
 {
@@ -710,7 +713,7 @@ set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
     return 0;
 }
 
-
+/* Load dictionary (ZSTD_DDict instance) to decompress context (ZSTD_DCtx instance). */
 static int
 load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
 {
@@ -746,17 +749,18 @@ load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
     return 0;
 }
 
-/* Use zstd's stream API to compress data. */
+/* Use zstd's stream API to compress data.
+   When success, return compressed data as a bytes object. */
 static inline PyObject*
 compress_loop(_zstd_state* state, ZSTD_CCtx* cctx, _BlocksOutputBuffer* buffer,
-    ZSTD_inBuffer* in, ZSTD_outBuffer* out, ZSTD_EndDirective end_type)
+              ZSTD_inBuffer* in, ZSTD_outBuffer* out, ZSTD_EndDirective end_directive)
 {
     PyObject* ret;
     size_t zstd_ret;
 
     while (1) {
         Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_compressStream2(cctx, out, in, end_type);
+        zstd_ret = ZSTD_compressStream2(cctx, out, in, end_directive);
         Py_END_ALLOW_THREADS
         
         /* Check error */
