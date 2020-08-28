@@ -800,7 +800,6 @@ _zstd.ZstdCompressor.__init__
 
 Initialize ZstdCompressor object.
 [-clinic start generated code]*/
-
 static int
 _zstd_ZstdCompressor_init(ZstdCompressor *self, PyObject* args, PyObject* kwargs)
 {
@@ -811,9 +810,10 @@ _zstd_ZstdCompressor_init(ZstdCompressor *self, PyObject* args, PyObject* kwargs
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
 
+    /* Parse the arguments */
     if (!PyArg_ParseTupleAndKeywords(args, kwargs,
-                "|OO:ZstdCompressor", arg_names,
-                 &level_or_option, &dict)) {
+                                     "|OO:ZstdCompressor", arg_names,
+                                     &level_or_option, &dict)) {
         return -1;
     }
 
