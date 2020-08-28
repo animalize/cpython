@@ -88,6 +88,95 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_zstd_ZstdCompressor_compress__doc__,
+"compress($self, data, /)\n"
+"--\n"
+"\n"
+"Provide data to the compressor object.\n"
+"\n"
+"Returns a chunk of compressed data if possible, or b\'\' otherwise.\n"
+"\n"
+"When you have finished providing data to the compressor, call the\n"
+"flush() method to finish the compression process.");
+
+#define _ZSTD_ZSTDCOMPRESSOR_COMPRESS_METHODDEF    \
+    {"compress", (PyCFunction)_zstd_ZstdCompressor_compress, METH_O, _zstd_ZstdCompressor_compress__doc__},
+
+static PyObject *
+_zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data);
+
+static PyObject *
+_zstd_ZstdCompressor_compress(ZstdCompressor *self, PyObject *arg)
+{
+    PyObject *return_value = NULL;
+    Py_buffer data = {NULL, NULL};
+
+    if (PyObject_GetBuffer(arg, &data, PyBUF_SIMPLE) != 0) {
+        goto exit;
+    }
+    if (!PyBuffer_IsContiguous(&data, 'C')) {
+        _PyArg_BadArgument("compress", "argument", "contiguous buffer", arg);
+        goto exit;
+    }
+    return_value = _zstd_ZstdCompressor_compress_impl(self, &data);
+
+exit:
+    /* Cleanup for data */
+    if (data.obj) {
+       PyBuffer_Release(&data);
+    }
+
+    return return_value;
+}
+
+PyDoc_STRVAR(_zstd_ZstdCompressor_flush__doc__,
+"flush($self, /, end_frame=True)\n"
+"--\n"
+"\n"
+"Finish the compression process.\n"
+"\n"
+"  end_frame\n"
+"    True flush data and end the frame. False flush data, don\'t end the\n"
+"    frame.\n"
+"\n"
+"Returns the compressed data left in internal buffers.\n"
+"\n"
+"The compressor object may be used after this method is called.");
+
+#define _ZSTD_ZSTDCOMPRESSOR_FLUSH_METHODDEF    \
+    {"flush", (PyCFunction)(void(*)(void))_zstd_ZstdCompressor_flush, METH_FASTCALL|METH_KEYWORDS, _zstd_ZstdCompressor_flush__doc__},
+
+static PyObject *
+_zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame);
+
+static PyObject *
+_zstd_ZstdCompressor_flush(ZstdCompressor *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"end_frame", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "flush", 0};
+    PyObject *argsbuf[1];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 0;
+    int end_frame = 1;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 0, 1, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    end_frame = PyObject_IsTrue(args[0]);
+    if (end_frame < 0) {
+        goto exit;
+    }
+skip_optional_pos:
+    return_value = _zstd_ZstdCompressor_flush_impl(self, end_frame);
+
+exit:
+    return return_value;
+}
+
 PyDoc_STRVAR(_zstd_compress__doc__,
 "compress($module, /, data, level_or_option=None, dict=None)\n"
 "--\n"
@@ -291,4 +380,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=a60834fe949a87bc input=a9049054013a1b77]*/
+/*[clinic end generated code: output=9993e6c427ea0e79 input=a9049054013a1b77]*/

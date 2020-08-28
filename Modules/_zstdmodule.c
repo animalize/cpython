@@ -31,7 +31,6 @@ typedef struct {
 
     ZSTD_CCtx* cctx;
     PyObject* dict;
-    int flushed;
 
     PyThread_type_lock lock;
 } ZstdCompressor;
@@ -761,7 +760,6 @@ _ZstdCompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     }
 
     self->dict = NULL;
-    self->flushed = 0;
 
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
@@ -838,6 +836,169 @@ _zstd_ZstdCompressor_init(ZstdCompressor *self, PyObject* args, PyObject* kwargs
     return 0;
 }
 
+/*[clinic input]
+_zstd.ZstdCompressor.compress
+
+    data: Py_buffer
+    /
+
+Provide data to the compressor object.
+
+Returns a chunk of compressed data if possible, or b'' otherwise.
+
+When you have finished providing data to the compressor, call the
+flush() method to finish the compression process.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data)
+/*[clinic end generated code: output=c3d452b67418aef6 input=a0d6204a6e438f15]*/
+{
+    ZSTD_inBuffer in;
+    ZSTD_outBuffer out;
+    _BlocksOutputBuffer buffer;
+    size_t zstd_ret;
+    PyObject* ret;
+    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
+
+    ACQUIRE_LOCK(self);
+
+    /* Prepare input & output buffers */
+    in.src = data->buf;
+    in.size = data->len;
+    in.pos = 0;
+
+    /* OutputBuffer(OnError)(&buffer) is after `error` label,
+       so initialize the buffer before any `goto error` statement. */
+    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
+        goto error;
+    }
+
+    while (1) {
+        Py_BEGIN_ALLOW_THREADS
+        zstd_ret = ZSTD_compressStream2(self->cctx, &out, &in, ZSTD_e_continue);
+        Py_END_ALLOW_THREADS
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            goto error;
+        }
+
+        /* Finished */
+        if (zstd_ret == 0) {
+            ret = OutputBuffer(Finish)(&buffer, &out);
+            if (ret != NULL) {
+                goto success;
+            }
+            else {
+                goto error;
+            }
+        }
+
+        /* Output buffer exhausted, grow the buffer */
+        if (out.pos == out.size) {
+            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
+                goto error;
+            }
+        }
+
+        assert(in.pos <= in.size);
+    }
+
+error:
+    OutputBuffer(OnError)(&buffer);
+    ret = NULL;
+success:
+    RELEASE_LOCK(self);
+    return ret;
+}
+
+/*[clinic input]
+_zstd.ZstdCompressor.flush
+
+    end_frame: bool=True
+        True flush data and end the frame. False flush data, don't end the
+        frame.
+
+Finish the compression process.
+
+Returns the compressed data left in internal buffers.
+
+The compressor object may be used after this method is called.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
+/*[clinic end generated code: output=0206a53c394f4620 input=9f5cfc3560d831ac]*/
+{
+    ZSTD_inBuffer in;
+    ZSTD_outBuffer out;
+    _BlocksOutputBuffer buffer;
+    size_t zstd_ret;
+    PyObject* ret;
+    ZSTD_EndDirective end_directive;
+    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
+
+    ACQUIRE_LOCK(self);
+
+    /* Prepare input & output buffers */
+    in.src = &in;
+    in.size = 0;
+    in.pos = 0;
+
+    /* OutputBuffer(OnError)(&buffer) is after `error` label,
+       so initialize the buffer before any `goto error` statement. */
+    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
+        goto error;
+    }
+
+    /* Flush type */
+    end_directive = end_frame ? ZSTD_e_end : ZSTD_e_flush;
+
+    while (1) {
+        Py_BEGIN_ALLOW_THREADS
+        zstd_ret = ZSTD_compressStream2(self->cctx, &out, &in, end_directive);
+        Py_END_ALLOW_THREADS
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            goto error;
+        }
+
+        /* Finished */
+        if (zstd_ret == 0) {
+            ret = OutputBuffer(Finish)(&buffer, &out);
+            if (ret != NULL) {
+                goto success;
+            }
+            else {
+                goto error;
+            }
+        }
+
+        /* Output buffer exhausted, grow the buffer */
+        if (out.pos == out.size) {
+            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
+                goto error;
+            }
+        }
+
+        assert(in.pos <= in.size);
+    }
+
+error:
+    OutputBuffer(OnError)(&buffer);
+    ret = NULL;
+success:
+    RELEASE_LOCK(self);
+    return ret;
+}
+
+
 static int
 _ZstdCompressor_traverse(ZstdCompressor* self, visitproc visit, void* arg)
 {
@@ -845,11 +1006,17 @@ _ZstdCompressor_traverse(ZstdCompressor* self, visitproc visit, void* arg)
     return 0;
 }
 
+static PyMethodDef _ZstdCompressor_methods[] = {
+    _ZSTD_ZSTDCOMPRESSOR_COMPRESS_METHODDEF
+    _ZSTD_ZSTDCOMPRESSOR_FLUSH_METHODDEF
+    {NULL, NULL}
+};
+
 static PyType_Slot zstdcompressor_slots[] = {
     {Py_tp_new, _ZstdCompressor_new},
     {Py_tp_dealloc, _ZstdCompressor_dealloc},
     {Py_tp_init, _zstd_ZstdCompressor_init},
-    //{Py_tp_methods, Compressor_methods},
+    {Py_tp_methods, _ZstdCompressor_methods},
     //{Py_tp_doc, (char*)Compressor_doc},
     {Py_tp_traverse, _ZstdCompressor_traverse},
     {0, 0}
