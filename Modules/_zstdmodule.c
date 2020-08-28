@@ -26,11 +26,21 @@ typedef struct {
     PyThread_type_lock lock;
 } ZstdDict;
 
+typedef struct {
+    PyObject_HEAD
+
+    ZSTD_CCtx* cctx;
+    int flushed;
+    PyThread_type_lock lock;
+} ZstdCompressor;
+
+
 /*[clinic input]
 module _zstd
 class _zstd.ZstdDict "ZstdDict *" "&ZstdDict_Type"
+class _zstd.ZstdCompressor "ZstdCompressor *" "&ZstdCompressor_type"
 [clinic start generated code]*/
-/*[clinic end generated code: output=da39a3ee5e6b4b0d input=e5f7d2e8dbc268ec]*/
+/*[clinic end generated code: output=da39a3ee5e6b4b0d input=1b2910840e0d6dc8]*/
 
 #include "clinic\_zstdmodule.c.h"
 
@@ -479,6 +489,46 @@ static PyType_Spec zstddict_type_spec = {
 };
 /* ZstdDict code end */
 
+static PyObject*
+_ZstdCompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    ZstdCompressor* self;
+    self = (ZstdCompressor*)type->tp_alloc(type, 0);
+
+    self->cctx = NULL;
+    self->flushed = 0;
+
+    self->lock = PyThread_allocate_lock();
+    if (self->lock == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
+        return NULL;
+    }
+
+    return (PyObject*)self;
+}
+
+static void
+_ZstdCompressor_dealloc(ZstdCompressor* self)
+{
+    if (self->cctx) {
+        ZSTD_freeCCtx(self->cctx);
+    }
+    PyThread_free_lock(self->lock);
+
+    PyTypeObject* tp = Py_TYPE(self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
+}
+
+static PyType_Slot zstd_compressor_type_slots[] = {
+    {Py_tp_new, _ZstdCompressor_new},
+    {Py_tp_dealloc, _ZstdCompressor_dealloc},
+    //{Py_tp_methods, Compressor_methods},
+    //{Py_tp_init, Compressor_init},
+    //{Py_tp_doc, (char*)Compressor_doc},
+    //{Py_tp_traverse, Compressor_traverse},
+    {0, 0}
+};
 
 /*[clinic input]
 _zstd._train_dict
