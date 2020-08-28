@@ -97,7 +97,7 @@ PyDoc_STRVAR(_zstd_compress__doc__,
 "  data\n"
 "    Binary data to be compressed.\n"
 "  level_or_option\n"
-"    It can be an int object, which in this case represents the compression\n"
+"    It can be an int object, in this case represents the compression\n"
 "    level. It can also be a dictionary for setting various advanced\n"
 "    parameters. The default value None means to use zstd\'s default\n"
 "    compression parameters.\n"
@@ -291,4 +291,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=6a180625ba9469d7 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=a60834fe949a87bc input=a9049054013a1b77]*/

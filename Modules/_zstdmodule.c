@@ -30,7 +30,9 @@ typedef struct {
     PyObject_HEAD
 
     ZSTD_CCtx* cctx;
+    PyObject* dict;
     int flushed;
+
     PyThread_type_lock lock;
 } ZstdCompressor;
 
@@ -260,6 +262,7 @@ _BlocksOutputBuffer_OnError(_BlocksOutputBuffer *buffer)
 
 typedef struct {
     PyTypeObject *ZstdDict_type;
+    PyTypeObject* ZstdCompressor_type;
     PyObject *ZstdError;
 } _zstd_state;
 
@@ -489,47 +492,6 @@ static PyType_Spec zstddict_type_spec = {
 };
 /* ZstdDict code end */
 
-static PyObject*
-_ZstdCompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
-{
-    ZstdCompressor* self;
-    self = (ZstdCompressor*)type->tp_alloc(type, 0);
-
-    self->cctx = NULL;
-    self->flushed = 0;
-
-    self->lock = PyThread_allocate_lock();
-    if (self->lock == NULL) {
-        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
-        return NULL;
-    }
-
-    return (PyObject*)self;
-}
-
-static void
-_ZstdCompressor_dealloc(ZstdCompressor* self)
-{
-    if (self->cctx) {
-        ZSTD_freeCCtx(self->cctx);
-    }
-    PyThread_free_lock(self->lock);
-
-    PyTypeObject* tp = Py_TYPE(self);
-    tp->tp_free((PyObject*)self);
-    Py_DECREF(tp);
-}
-
-static PyType_Slot zstd_compressor_type_slots[] = {
-    {Py_tp_new, _ZstdCompressor_new},
-    {Py_tp_dealloc, _ZstdCompressor_dealloc},
-    //{Py_tp_methods, Compressor_methods},
-    //{Py_tp_init, Compressor_init},
-    //{Py_tp_doc, (char*)Compressor_doc},
-    //{Py_tp_traverse, Compressor_traverse},
-    {0, 0}
-};
-
 /*[clinic input]
 _zstd._train_dict
 
@@ -601,8 +563,8 @@ error:
 
 
 static int
-set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
-                 PyObject *level_or_option, int *compress_level)
+set_c_parameters(_zstd_state* state, ZSTD_CCtx* cctx,
+    PyObject* level_or_option, int* compress_level)
 {
     size_t zstd_ret;
 
@@ -611,7 +573,7 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
         *compress_level = _PyLong_AsInt(level_or_option);
         if (*compress_level == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError,
-                            "Compress level should be 32-bit signed int value.");
+                "Compress level should be 32-bit signed int value.");
             return -1;
         }
 
@@ -621,13 +583,13 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
             PyErr_Format(state->ZstdError,
-                         "Error when setting compression level: %s",
-                         ZSTD_getErrorName(zstd_ret));
+                "Error when setting compression level: %s",
+                ZSTD_getErrorName(zstd_ret));
             return -1;
         }
         return 0;
     }
-    
+
     /* Options dict */
     if (PyDict_Check(level_or_option)) {
         PyObject* key, * value;
@@ -637,14 +599,14 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
             int key_v = _PyLong_AsInt(key);
             if (key_v == -1 && PyErr_Occurred()) {
                 PyErr_SetString(PyExc_ValueError,
-                                "Key of option dict should be 32-bit signed int value.");
+                    "Key of option dict should be 32-bit signed int value.");
                 return -1;
             }
 
             int value_v = _PyLong_AsInt(value);
             if (value_v == -1 && PyErr_Occurred()) {
                 PyErr_SetString(PyExc_ValueError,
-                                "Value of option dict should be 32-bit signed int value.");
+                    "Value of option dict should be 32-bit signed int value.");
                 return -1;
             }
 
@@ -673,17 +635,18 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
 
 static int
 load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
-            PyObject* dict, int compress_level)
+    PyObject* dict, int compress_level)
 {
     size_t zstd_ret;
     ZSTD_CDict* c_dict;
     int ret;
-    
+
     /* Check dict type */
     ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
     if (ret < 0) {
         return -1;
-    } else if (ret == 0) {
+    }
+    else if (ret == 0) {
         PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
         return -1;
     }
@@ -706,13 +669,206 @@ load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
     return 0;
 }
 
+static int
+set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
+{
+    size_t zstd_ret;
+    PyObject* key, * value;
+    Py_ssize_t pos;
+
+    if (!PyDict_Check(option)) {
+        PyErr_SetString(PyExc_TypeError, "option argument wrong type.");
+        return -1;
+    }
+
+    pos = 0;
+    while (PyDict_Next(option, &pos, &key, &value)) {
+        int key_v = _PyLong_AsInt(key);
+        if (key_v == -1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                "Key of option dict should be 32-bit signed integer value.");
+            return -1;
+        }
+
+        int value_v = _PyLong_AsInt(value);
+        if (value_v == -1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                "Value of option dict should be 32-bit signed integer value.");
+            return -1;
+        }
+
+        /* Set parameter to compress context */
+        zstd_ret = ZSTD_DCtx_setParameter(dctx, key_v, value_v);
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_Format(state->ZstdError,
+                "Error when setting the %dth parameter in option argument: %s",
+                pos, ZSTD_getErrorName(zstd_ret));
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+static int
+load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
+{
+    size_t zstd_ret;
+    ZSTD_DDict* d_dict;
+    int ret;
+
+    /* Check dict type */
+    ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
+    if (ret < 0) {
+        return -1;
+    }
+    else if (ret == 0) {
+        PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
+        return -1;
+    }
+
+    /* Get ZSTD_DDict */
+    d_dict = _get_DDict((ZstdDict*)dict);
+    if (d_dict == NULL) {
+        PyErr_SetString(PyExc_SystemError, "Failed to get ZSTD_DDict.");
+        return -1;
+    }
+
+    /* Reference a decompress dictionary */
+    zstd_ret = ZSTD_DCtx_refDDict(dctx, d_dict);
+
+    /* Check error */
+    if (ZSTD_isError(zstd_ret)) {
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+        return -1;
+    }
+    return 0;
+}
+
+
+static PyObject*
+_ZstdCompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    ZstdCompressor* self;
+    self = (ZstdCompressor*)type->tp_alloc(type, 0);
+
+    self->cctx = ZSTD_createCCtx();
+    if (self->cctx == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Unable to create ZSTD_CCtx instance.");
+        return NULL;
+    }
+
+    self->dict = NULL;
+    self->flushed = 0;
+
+    self->lock = PyThread_allocate_lock();
+    if (self->lock == NULL) {
+        ZSTD_freeCCtx(self->cctx);
+
+        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
+        return NULL;
+    }
+
+    return (PyObject*)self;
+}
+
+static void
+_ZstdCompressor_dealloc(ZstdCompressor* self)
+{
+    ZSTD_freeCCtx(self->cctx);
+    /* Py_XDECREF the dict after free the compress context */
+    Py_XDECREF(self->dict);
+    PyThread_free_lock(self->lock);
+
+    PyTypeObject* tp = Py_TYPE(self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
+}
+
+/*[-clinic input]
+_zstd.ZstdCompressor.__init__
+
+    level_or_option: object = None
+        It can be an int object, in this case represents the compression
+        level. It can also be a dictionary for setting various advanced
+        parameters. The default value None means to use zstd's default
+        compression parameters.
+    dict: object = None
+        Pre-trained dictionary for compression, a ZstdDict object.
+
+Initialize ZstdCompressor object.
+[-clinic start generated code]*/
+
+static int
+_zstd_ZstdCompressor_init(ZstdCompressor *self, PyObject* args, PyObject* kwargs)
+{
+    static char* arg_names[] = {"level_or_option", "dict", NULL};
+    PyObject* level_or_option = Py_None;
+    PyObject* dict = Py_None;
+    int compress_level = 0; /* 0 means use zstd's default compression level */
+    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs,
+                "|OO:ZstdCompressor", arg_names,
+                 &level_or_option, &dict)) {
+        return -1;
+    }
+
+    /* Set compressLevel/options to compress context */
+    if (level_or_option != Py_None) {
+        if (set_c_parameters(state, self->cctx, level_or_option, &compress_level) < 0) {
+            return -1;
+        }
+    }
+
+    /* Load dictionary to compress context */
+    if (dict != Py_None) {
+        if (load_c_dict(state, self->cctx, dict, compress_level) < 0) {
+            return -1;
+        }
+
+        /* Py_INCREF the dict */
+        Py_INCREF(dict);
+        self->dict = dict;
+    }
+
+    return 0;
+}
+
+static int
+_ZstdCompressor_traverse(ZstdCompressor* self, visitproc visit, void* arg)
+{
+    Py_VISIT(Py_TYPE(self));
+    return 0;
+}
+
+static PyType_Slot zstdcompressor_slots[] = {
+    {Py_tp_new, _ZstdCompressor_new},
+    {Py_tp_dealloc, _ZstdCompressor_dealloc},
+    {Py_tp_init, _zstd_ZstdCompressor_init},
+    //{Py_tp_methods, Compressor_methods},
+    //{Py_tp_doc, (char*)Compressor_doc},
+    {Py_tp_traverse, _ZstdCompressor_traverse},
+    {0, 0}
+};
+
+static PyType_Spec zstdcompressor_type_spec = {
+    .name = "_zstd.ZstdCompressor",
+    .basicsize = sizeof(ZstdCompressor),
+    .flags = Py_TPFLAGS_DEFAULT,
+    .slots = zstdcompressor_slots,
+};
+
 /*[clinic input]
 _zstd.compress
 
     data: Py_buffer
         Binary data to be compressed.
     level_or_option: object = None
-        It can be an int object, which in this case represents the compression
+        It can be an int object, in this case represents the compression
         level. It can also be a dictionary for setting various advanced
         parameters. The default value None means to use zstd's default
         compression parameters.
@@ -725,7 +881,7 @@ Returns a bytes object containing compressed data.
 static PyObject *
 _zstd_compress_impl(PyObject *module, Py_buffer *data,
                     PyObject *level_or_option, PyObject *dict)
-/*[clinic end generated code: output=d960764f6635aad4 input=89296277964fea58]*/
+/*[clinic end generated code: output=d960764f6635aad4 input=46aaf999c7c37417]*/
 {
     ZSTD_CCtx *cctx = NULL;
     ZSTD_inBuffer in;
@@ -808,84 +964,6 @@ success:
         ZSTD_freeCCtx(cctx);
     }
     return ret;
-}
-
-
-static int
-set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
-{
-    size_t zstd_ret;
-    PyObject *key, *value;
-    Py_ssize_t pos;
-
-    if (!PyDict_Check(option)) {
-        PyErr_SetString(PyExc_TypeError, "option argument wrong type.");
-        return -1;
-    }
-
-    pos = 0;
-    while (PyDict_Next(option, &pos, &key, &value)) {
-        int key_v = _PyLong_AsInt(key);
-        if (key_v == -1 && PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError,
-                "Key of option dict should be 32-bit signed integer value.");
-            return -1;
-        }
-
-        int value_v = _PyLong_AsInt(value);
-        if (value_v == -1 && PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError,
-                "Value of option dict should be 32-bit signed integer value.");
-            return -1;
-        }
-
-        /* Set parameter to compress context */
-        zstd_ret = ZSTD_DCtx_setParameter(dctx, key_v, value_v);
-
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_Format(state->ZstdError,
-                "Error when setting the %dth parameter in option argument: %s",
-                pos, ZSTD_getErrorName(zstd_ret));
-            return -1;
-        }
-    }
-    return 0;
-}
-
-
-static int
-load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
-{
-    size_t zstd_ret;
-    ZSTD_DDict* d_dict;
-    int ret;
-
-    /* Check dict type */
-    ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
-    if (ret < 0) {
-        return -1;
-    } else if (ret == 0) {
-        PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
-        return -1;
-    }
-
-    /* Get ZSTD_DDict */
-    d_dict = _get_DDict((ZstdDict*)dict);
-    if (d_dict == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Failed to get ZSTD_DDict.");
-        return -1;
-    }
-
-    /* Reference a decompress dictionary */
-    zstd_ret = ZSTD_DCtx_refDDict(dctx, d_dict);
-
-    /* Check error */
-    if (ZSTD_isError(zstd_ret)) {
-        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-        return -1;
-    }
-    return 0;
 }
 
 
@@ -1088,6 +1166,7 @@ zstd_exec(PyObject *module)
     _zstd_state *state = get_zstd_state(module);
     state->ZstdError = NULL;
     state->ZstdDict_type = NULL;
+    state->ZstdCompressor_type = NULL;
 
     /* ZstdError */
     state->ZstdError = PyErr_NewExceptionWithDoc("_zstd.ZstdError", "Call to zstd failed.", NULL, NULL);
@@ -1106,6 +1185,16 @@ zstd_exec(PyObject *module)
         goto error;
     }
     if (PyModule_AddType(module, (PyTypeObject *)state->ZstdDict_type) < 0) {
+        goto error;
+    }
+
+    /* ZstdCompressor */
+    state->ZstdCompressor_type = (PyTypeObject*)PyType_FromModuleAndSpec(module,
+                                                &zstdcompressor_type_spec, NULL);
+    if (state->ZstdCompressor_type == NULL) {
+        goto error;
+    }
+    if (PyModule_AddType(module, (PyTypeObject*)state->ZstdCompressor_type) < 0) {
         goto error;
     }
 
@@ -1133,6 +1222,7 @@ zstd_exec(PyObject *module)
 error:
     Py_XDECREF(state->ZstdError);
     Py_XDECREF(state->ZstdDict_type);
+    Py_XDECREF(state->ZstdCompressor_type);
     return -1;
 }
 

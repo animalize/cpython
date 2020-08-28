@@ -1,5 +1,6 @@
 __all__ = ('ZstdDict', 'ZstdError',
            'compress', 'decompress', 'train_dict',
+           'ZstdCompressor', 'ZstdDecompressor',
            'cParameter', 'dParameter')
 
 import builtins
