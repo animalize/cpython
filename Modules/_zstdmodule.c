@@ -746,6 +746,47 @@ load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
     return 0;
 }
 
+/* Use zstd's stream API to compress data. */
+static inline PyObject*
+compress_loop(_zstd_state* state, ZSTD_CCtx* cctx, _BlocksOutputBuffer* buffer,
+    ZSTD_inBuffer* in, ZSTD_outBuffer* out, ZSTD_EndDirective end_type)
+{
+    PyObject* ret;
+    size_t zstd_ret;
+
+    while (1) {
+        Py_BEGIN_ALLOW_THREADS
+        zstd_ret = ZSTD_compressStream2(cctx, out, in, end_type);
+        Py_END_ALLOW_THREADS
+        
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            return NULL;
+        }
+
+        /* Finished */
+        if (zstd_ret == 0) {
+            ret = OutputBuffer(Finish)(buffer, out);
+            if (ret != NULL) {
+                return ret;
+            }
+            else {
+                return NULL;
+            }
+        }
+
+        /* Output buffer exhausted, grow the buffer */
+        if (out->pos == out->size) {
+            if (OutputBuffer(Grow)(buffer, out) < 0) {
+                return NULL;
+            }
+        }
+
+        assert(in->pos <= in->size);
+    }
+}
+
 
 static PyObject*
 _ZstdCompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
@@ -857,7 +898,6 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data)
     ZSTD_inBuffer in;
     ZSTD_outBuffer out;
     _BlocksOutputBuffer buffer;
-    size_t zstd_ret;
     PyObject* ret;
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
@@ -875,36 +915,10 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data)
         goto error;
     }
 
-    while (1) {
-        Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_compressStream2(self->cctx, &out, &in, ZSTD_e_continue);
-        Py_END_ALLOW_THREADS
-
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-            goto error;
-        }
-
-        /* Finished */
-        if (zstd_ret == 0) {
-            ret = OutputBuffer(Finish)(&buffer, &out);
-            if (ret != NULL) {
-                goto success;
-            }
-            else {
-                goto error;
-            }
-        }
-
-        /* Output buffer exhausted, grow the buffer */
-        if (out.pos == out.size) {
-            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
-                goto error;
-            }
-        }
-
-        assert(in.pos <= in.size);
+    /* Do compress, compress_loop() is inlined function. */
+    ret = compress_loop(state, self->cctx, &buffer, &in, &out, ZSTD_e_continue);
+    if (ret != NULL) {
+        goto success;
     }
 
 error:
@@ -936,7 +950,6 @@ _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
     ZSTD_inBuffer in;
     ZSTD_outBuffer out;
     _BlocksOutputBuffer buffer;
-    size_t zstd_ret;
     PyObject* ret;
     ZSTD_EndDirective end_directive;
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
@@ -958,36 +971,10 @@ _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
     /* Flush type */
     end_directive = end_frame ? ZSTD_e_end : ZSTD_e_flush;
 
-    while (1) {
-        Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_compressStream2(self->cctx, &out, &in, end_directive);
-        Py_END_ALLOW_THREADS
-
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-            goto error;
-        }
-
-        /* Finished */
-        if (zstd_ret == 0) {
-            ret = OutputBuffer(Finish)(&buffer, &out);
-            if (ret != NULL) {
-                goto success;
-            }
-            else {
-                goto error;
-            }
-        }
-
-        /* Output buffer exhausted, grow the buffer */
-        if (out.pos == out.size) {
-            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
-                goto error;
-            }
-        }
-
-        assert(in.pos <= in.size);
+    /* Do compress, compress_loop() is inlined function. */
+    ret = compress_loop(state, self->cctx, &buffer, &in, &out, end_directive);
+    if (ret != NULL) {
+        goto success;
     }
 
 error:
@@ -1054,7 +1041,6 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
     ZSTD_inBuffer in;
     ZSTD_outBuffer out;
     _BlocksOutputBuffer buffer;
-    size_t zstd_ret;
     PyObject *ret;
     _zstd_state *state = get_zstd_state(module);
     int compress_level = 0;  /* 0 means use zstd's default compressionLevel */
@@ -1090,37 +1076,12 @@ _zstd_compress_impl(PyObject *module, Py_buffer *data,
         }
     }
 
-    while(1) {
-        /* Zstd optimizes the case where the first flush mode is ZSTD_e_end,
-           since it knows it is compressing the entire source in one pass. */
-        Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_compressStream2(cctx, &out, &in, ZSTD_e_end);
-        Py_END_ALLOW_THREADS
-
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-            goto error;
-        }
-
-        /* Finished */
-        if (zstd_ret == 0) {
-            ret = OutputBuffer(Finish)(&buffer, &out);
-            if (ret != NULL) {
-                goto success;
-            } else {
-                goto error;
-            }
-        }
-
-        /* Output buffer exhausted, grow the buffer */
-        if (out.pos == out.size) {
-            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
-                goto error;
-            }
-        }
-
-        assert(in.pos <= in.size);
+    /* Do compress, compress_loop() is inlined function.
+       Zstd optimizes the case where the first flush mode is ZSTD_e_end,
+       since it knows it is compressing the entire source in one pass. */
+    ret = compress_loop(state, cctx, &buffer, &in, &out, ZSTD_e_end);
+    if (ret != NULL) {
+        goto success;
     }
 
 error:
