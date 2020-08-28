@@ -36,6 +36,58 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_zstd__train_dict__doc__,
+"_train_dict($module, /, dst_data, dst_data_sizes, dict_size)\n"
+"--\n"
+"\n"
+"Train a Zstd dictionary.");
+
+#define _ZSTD__TRAIN_DICT_METHODDEF    \
+    {"_train_dict", (PyCFunction)(void(*)(void))_zstd__train_dict, METH_FASTCALL|METH_KEYWORDS, _zstd__train_dict__doc__},
+
+static PyObject *
+_zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
+                       PyObject *dst_data_sizes, Py_ssize_t dict_size);
+
+static PyObject *
+_zstd__train_dict(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"dst_data", "dst_data_sizes", "dict_size", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "_train_dict", 0};
+    PyObject *argsbuf[3];
+    PyBytesObject *dst_data;
+    PyObject *dst_data_sizes;
+    Py_ssize_t dict_size;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 3, 3, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (!PyBytes_Check(args[0])) {
+        _PyArg_BadArgument("_train_dict", "argument 'dst_data'", "bytes", args[0]);
+        goto exit;
+    }
+    dst_data = (PyBytesObject *)args[0];
+    dst_data_sizes = args[1];
+    {
+        Py_ssize_t ival = -1;
+        PyObject *iobj = _PyNumber_Index(args[2]);
+        if (iobj != NULL) {
+            ival = PyLong_AsSsize_t(iobj);
+            Py_DECREF(iobj);
+        }
+        if (ival == -1 && PyErr_Occurred()) {
+            goto exit;
+        }
+        dict_size = ival;
+    }
+    return_value = _zstd__train_dict_impl(module, dst_data, dst_data_sizes, dict_size);
+
+exit:
+    return return_value;
+}
+
 PyDoc_STRVAR(_zstd_compress__doc__,
 "compress($module, /, data, level_or_option=None, dict=None)\n"
 "--\n"
@@ -170,58 +222,6 @@ exit:
     return return_value;
 }
 
-PyDoc_STRVAR(_zstd__train_dict__doc__,
-"_train_dict($module, /, dst_data, dst_data_sizes, dict_size)\n"
-"--\n"
-"\n"
-"Train a Zstd dictionary.");
-
-#define _ZSTD__TRAIN_DICT_METHODDEF    \
-    {"_train_dict", (PyCFunction)(void(*)(void))_zstd__train_dict, METH_FASTCALL|METH_KEYWORDS, _zstd__train_dict__doc__},
-
-static PyObject *
-_zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
-                       PyObject *dst_data_sizes, Py_ssize_t dict_size);
-
-static PyObject *
-_zstd__train_dict(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
-{
-    PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"dst_data", "dst_data_sizes", "dict_size", NULL};
-    static _PyArg_Parser _parser = {NULL, _keywords, "_train_dict", 0};
-    PyObject *argsbuf[3];
-    PyBytesObject *dst_data;
-    PyObject *dst_data_sizes;
-    Py_ssize_t dict_size;
-
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 3, 3, 0, argsbuf);
-    if (!args) {
-        goto exit;
-    }
-    if (!PyBytes_Check(args[0])) {
-        _PyArg_BadArgument("_train_dict", "argument 'dst_data'", "bytes", args[0]);
-        goto exit;
-    }
-    dst_data = (PyBytesObject *)args[0];
-    dst_data_sizes = args[1];
-    {
-        Py_ssize_t ival = -1;
-        PyObject *iobj = _PyNumber_Index(args[2]);
-        if (iobj != NULL) {
-            ival = PyLong_AsSsize_t(iobj);
-            Py_DECREF(iobj);
-        }
-        if (ival == -1 && PyErr_Occurred()) {
-            goto exit;
-        }
-        dict_size = ival;
-    }
-    return_value = _zstd__train_dict_impl(module, dst_data, dst_data_sizes, dict_size);
-
-exit:
-    return return_value;
-}
-
 PyDoc_STRVAR(_zstd__get_cparam_bounds__doc__,
 "_get_cparam_bounds($module, /, cParam)\n"
 "--\n"
@@ -291,4 +291,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=fd30e6dc27124aac input=a9049054013a1b77]*/
+/*[clinic end generated code: output=6a180625ba9469d7 input=a9049054013a1b77]*/

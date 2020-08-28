@@ -480,6 +480,76 @@ static PyType_Spec zstddict_type_spec = {
 /* ZstdDict code end */
 
 
+/*[clinic input]
+_zstd._train_dict
+
+    dst_data: PyBytesObject
+    dst_data_sizes: object
+    dict_size: Py_ssize_t
+
+Train a Zstd dictionary.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
+                       PyObject *dst_data_sizes, Py_ssize_t dict_size)
+/*[clinic end generated code: output=d39b262ebfcac776 input=385ab3b6c6dcdc3d]*/
+{
+    size_t* chunk_sizes = NULL;
+    PyObject* dict_buffer = NULL;
+    size_t zstd_ret;
+
+    /* Prepare chunk_sizes */
+    const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
+    if (chunks_number > UINT32_MAX) {
+        PyErr_SetString(PyExc_ValueError, "Number of data chunks is too big, should <= 4294967295.");
+        goto error;
+    }
+
+    chunk_sizes = PyMem_Malloc(chunks_number * sizeof(size_t));
+    if (chunk_sizes == NULL) {
+        goto error;
+    }
+
+    for (Py_ssize_t i = 0; i < chunks_number; i++) {
+        PyObject* size = PyList_GET_ITEM(dst_data_sizes, i);
+        chunk_sizes[i] = PyLong_AsSize_t(size);
+        if (chunk_sizes[i] == -1 && PyErr_Occurred()) {
+            goto error;
+        }
+    }
+
+    /* Allocate dict buffer */
+    dict_buffer = PyBytes_FromStringAndSize(NULL, dict_size);
+    if (dict_buffer == NULL) {
+        goto error;
+    }
+
+    /* Train the dictionary. */
+    Py_BEGIN_ALLOW_THREADS
+        zstd_ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
+            PyBytes_AS_STRING(dst_data), chunk_sizes, (UINT32)chunks_number);
+    Py_END_ALLOW_THREADS
+
+        /* Check zstd dict error. */
+        if (ZDICT_isError(zstd_ret)) {
+            _zstd_state* state = get_zstd_state(module);
+            PyErr_SetString(state->ZstdError, ZDICT_getErrorName(zstd_ret));
+            goto error;
+        }
+
+    PyMem_Free(chunk_sizes);
+    return dict_buffer;
+
+error:
+    if (chunk_sizes != NULL) {
+        PyMem_Free(chunk_sizes);
+    }
+    Py_XDECREF(dict_buffer);
+    return NULL;
+}
+
+
 static int
 set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
                  PyObject *level_or_option, int *compress_level)
@@ -866,75 +936,6 @@ success:
     return ret;
 }
 
-
-/*[clinic input]
-_zstd._train_dict
-
-    dst_data: PyBytesObject
-    dst_data_sizes: object
-    dict_size: Py_ssize_t
-
-Train a Zstd dictionary.
-[clinic start generated code]*/
-
-static PyObject *
-_zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
-                       PyObject *dst_data_sizes, Py_ssize_t dict_size)
-/*[clinic end generated code: output=d39b262ebfcac776 input=385ab3b6c6dcdc3d]*/
-{
-    size_t *chunk_sizes = NULL;
-    PyObject *dict_buffer = NULL;
-    size_t zstd_ret;
-
-    /* Prepare chunk_sizes */
-    const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
-    if (chunks_number > UINT32_MAX) {
-        PyErr_SetString(PyExc_ValueError, "Number of data chunks is too big, should <= 4294967295.");
-        goto error;
-    }
-
-    chunk_sizes = PyMem_Malloc(chunks_number * sizeof(size_t));
-    if (chunk_sizes == NULL) {
-        goto error;
-    }
-
-    for(Py_ssize_t i = 0; i < chunks_number; i++) {
-        PyObject *size = PyList_GET_ITEM(dst_data_sizes, i);
-        chunk_sizes[i] = PyLong_AsSize_t(size);
-        if (chunk_sizes[i] == -1 && PyErr_Occurred()) {
-            goto error;
-        }
-    }
-
-    /* Allocate dict buffer */
-    dict_buffer = PyBytes_FromStringAndSize(NULL, dict_size);
-    if (dict_buffer == NULL) {
-        goto error;
-    }
-
-    /* Train the dictionary. */
-    Py_BEGIN_ALLOW_THREADS
-    zstd_ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
-                                     PyBytes_AS_STRING(dst_data), chunk_sizes, (UINT32)chunks_number);
-    Py_END_ALLOW_THREADS
-
-    /* Check zstd dict error. */
-    if (ZDICT_isError(zstd_ret)) {
-        _zstd_state *state = get_zstd_state(module);
-        PyErr_SetString(state->ZstdError, ZDICT_getErrorName(zstd_ret));
-        goto error;
-    }
-
-    PyMem_Free(chunk_sizes);
-    return dict_buffer;
-
-error:
-    if (chunk_sizes != NULL) {
-        PyMem_Free(chunk_sizes);
-    }
-    Py_XDECREF(dict_buffer);
-    return NULL;
-}
 
 /*[clinic input]
 _zstd._get_cparam_bounds
