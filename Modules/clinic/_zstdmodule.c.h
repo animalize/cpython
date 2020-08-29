@@ -89,7 +89,7 @@ exit:
 }
 
 PyDoc_STRVAR(_zstd_ZstdCompressor_compress__doc__,
-"compress($self, data, /)\n"
+"compress($self, /, data, end_directive=_zstd._ZSTD_e_end)\n"
 "--\n"
 "\n"
 "Provide data to the compressor object.\n"
@@ -100,25 +100,43 @@ PyDoc_STRVAR(_zstd_ZstdCompressor_compress__doc__,
 "flush() method to finish the compression process.");
 
 #define _ZSTD_ZSTDCOMPRESSOR_COMPRESS_METHODDEF    \
-    {"compress", (PyCFunction)_zstd_ZstdCompressor_compress, METH_O, _zstd_ZstdCompressor_compress__doc__},
+    {"compress", (PyCFunction)(void(*)(void))_zstd_ZstdCompressor_compress, METH_FASTCALL|METH_KEYWORDS, _zstd_ZstdCompressor_compress__doc__},
 
 static PyObject *
-_zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data);
+_zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
+                                   int end_directive);
 
 static PyObject *
-_zstd_ZstdCompressor_compress(ZstdCompressor *self, PyObject *arg)
+_zstd_ZstdCompressor_compress(ZstdCompressor *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"data", "end_directive", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "compress", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
     Py_buffer data = {NULL, NULL};
+    int end_directive = ZSTD_e_continue;
 
-    if (PyObject_GetBuffer(arg, &data, PyBUF_SIMPLE) != 0) {
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (PyObject_GetBuffer(args[0], &data, PyBUF_SIMPLE) != 0) {
         goto exit;
     }
     if (!PyBuffer_IsContiguous(&data, 'C')) {
-        _PyArg_BadArgument("compress", "argument", "contiguous buffer", arg);
+        _PyArg_BadArgument("compress", "argument 'data'", "contiguous buffer", args[0]);
         goto exit;
     }
-    return_value = _zstd_ZstdCompressor_compress_impl(self, &data);
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    end_directive = _PyLong_AsInt(args[1]);
+    if (end_directive == -1 && PyErr_Occurred()) {
+        goto exit;
+    }
+skip_optional_pos:
+    return_value = _zstd_ZstdCompressor_compress_impl(self, &data, end_directive);
 
 exit:
     /* Cleanup for data */
@@ -174,74 +192,6 @@ skip_optional_pos:
     return_value = _zstd_ZstdCompressor_flush_impl(self, end_frame);
 
 exit:
-    return return_value;
-}
-
-PyDoc_STRVAR(_zstd_compress__doc__,
-"compress($module, /, data, level_or_option=None, dict=None)\n"
-"--\n"
-"\n"
-"Returns a bytes object containing compressed data.\n"
-"\n"
-"  data\n"
-"    Binary data to be compressed.\n"
-"  level_or_option\n"
-"    It can be an int object, in this case represents the compression\n"
-"    level. It can also be a dictionary for setting various advanced\n"
-"    parameters. The default value None means to use zstd\'s default\n"
-"    compression parameters.\n"
-"  dict\n"
-"    Pre-trained dictionary for compression, a ZstdDict object.");
-
-#define _ZSTD_COMPRESS_METHODDEF    \
-    {"compress", (PyCFunction)(void(*)(void))_zstd_compress, METH_FASTCALL|METH_KEYWORDS, _zstd_compress__doc__},
-
-static PyObject *
-_zstd_compress_impl(PyObject *module, Py_buffer *data,
-                    PyObject *level_or_option, PyObject *dict);
-
-static PyObject *
-_zstd_compress(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
-{
-    PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"data", "level_or_option", "dict", NULL};
-    static _PyArg_Parser _parser = {NULL, _keywords, "compress", 0};
-    PyObject *argsbuf[3];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-    Py_buffer data = {NULL, NULL};
-    PyObject *level_or_option = Py_None;
-    PyObject *dict = Py_None;
-
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 3, 0, argsbuf);
-    if (!args) {
-        goto exit;
-    }
-    if (PyObject_GetBuffer(args[0], &data, PyBUF_SIMPLE) != 0) {
-        goto exit;
-    }
-    if (!PyBuffer_IsContiguous(&data, 'C')) {
-        _PyArg_BadArgument("compress", "argument 'data'", "contiguous buffer", args[0]);
-        goto exit;
-    }
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    if (args[1]) {
-        level_or_option = args[1];
-        if (!--noptargs) {
-            goto skip_optional_pos;
-        }
-    }
-    dict = args[2];
-skip_optional_pos:
-    return_value = _zstd_compress_impl(module, &data, level_or_option, dict);
-
-exit:
-    /* Cleanup for data */
-    if (data.obj) {
-       PyBuffer_Release(&data);
-    }
-
     return return_value;
 }
 
@@ -380,4 +330,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=9993e6c427ea0e79 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=a3e1671c1980d77b input=a9049054013a1b77]*/

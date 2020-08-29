@@ -10,39 +10,53 @@ import _compression
 from enum import IntEnum
 
 from _zstd import *
-from _zstd import _train_dict, _get_cparam_bounds, _get_dparam_bounds
-
+import _zstd
 
 class CompressParameter(IntEnum):
-    compressionLevel = ZSTD_c_compressionLevel
-    windowLog = ZSTD_c_windowLog
-    hashLog = ZSTD_c_hashLog
-    chainLog = ZSTD_c_chainLog
-    searchLog = ZSTD_c_searchLog
-    minMatch = ZSTD_c_minMatch
-    targetLength = ZSTD_c_targetLength
-    strategy = ZSTD_c_strategy
-    enableLongDistanceMatching = ZSTD_c_enableLongDistanceMatching
-    ldmHashLog = ZSTD_c_ldmHashLog
-    ldmMinMatch = ZSTD_c_ldmMinMatch
-    ldmBucketSizeLog = ZSTD_c_ldmBucketSizeLog
-    ldmHashRateLog = ZSTD_c_ldmHashRateLog
-    contentSizeFlag = ZSTD_c_contentSizeFlag
-    checksumFlag = ZSTD_c_checksumFlag
-    dictIDFlag = ZSTD_c_dictIDFlag
+    compressionLevel = _zstd._ZSTD_c_compressionLevel
+    windowLog = _zstd._ZSTD_c_windowLog
+    hashLog = _zstd._ZSTD_c_hashLog
+    chainLog = _zstd._ZSTD_c_chainLog
+    searchLog = _zstd._ZSTD_c_searchLog
+    minMatch = _zstd._ZSTD_c_minMatch
+    targetLength = _zstd._ZSTD_c_targetLength
+    strategy = _zstd._ZSTD_c_strategy
+    enableLongDistanceMatching = _zstd._ZSTD_c_enableLongDistanceMatching
+    ldmHashLog = _zstd._ZSTD_c_ldmHashLog
+    ldmMinMatch = _zstd._ZSTD_c_ldmMinMatch
+    ldmBucketSizeLog = _zstd._ZSTD_c_ldmBucketSizeLog
+    ldmHashRateLog = _zstd._ZSTD_c_ldmHashRateLog
+    contentSizeFlag = _zstd._ZSTD_c_contentSizeFlag
+    checksumFlag = _zstd._ZSTD_c_checksumFlag
+    dictIDFlag = _zstd._ZSTD_c_dictIDFlag
 
     def bounds(self):
         """Return lower and upper bounds of a parameter, both inclusive."""
-        return _get_cparam_bounds(self.value)
+        return _zstd._get_cparam_bounds(self.value)
 
 
 class DecompressParameter(IntEnum):
-    windowLogMax = ZSTD_d_windowLogMax
+    windowLogMax = _zstd._ZSTD_d_windowLogMax
 
     def bounds(self):
         """Return lower and upper bounds of a parameter, both inclusive."""
-        return _get_dparam_bounds(self.value)
+        return _zstd._get_dparam_bounds(self.value)
 
+class EndDirective(IntEnum):
+    CONTINUE = _zstd._ZSTD_e_continue
+    FLUSH = _zstd._ZSTD_e_flush
+    END = _zstd._ZSTD_e_end
+
+def compress(data, level_or_option=None, dict=None):
+    """Compress a block of data.
+
+    Refer to ZstdCompressor's docstring for a description of the
+    optional arguments *level_or_option*, *dict*.
+
+    For incremental compression, use an ZstdCompressor instead.
+    """
+    comp = ZstdCompressor(level_or_option, dict)
+    return comp.compress(data, _zstd._ZSTD_e_end)
 
 def train_dict(iterable_of_chunks, dict_size=100*1024):
     chunks = []
@@ -52,6 +66,9 @@ def train_dict(iterable_of_chunks, dict_size=100*1024):
         chunk_sizes.append(len(chunk))
 
     chunks = b''.join(chunks)
-    dict_content = _train_dict(chunks, chunk_sizes, dict_size)
+    # chunks: samples be stored concatenated in a single flat buffer.
+    # chunk_sizes: a list of each sample's size.
+    # dict_size: size of the dictionary.
+    dict_content = _zstd._train_dict(chunks, chunk_sizes, dict_size)
 
     return ZstdDict(dict_content)

@@ -538,8 +538,9 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
 
     /* Train the dictionary. */
     Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
-            PyBytes_AS_STRING(dst_data), chunk_sizes, (UINT32)chunks_number);
+    zstd_ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
+                                     PyBytes_AS_STRING(dst_data),
+                                     chunk_sizes, (UINT32)chunks_number);
     Py_END_ALLOW_THREADS
 
         /* Check zstd dict error. */
@@ -749,48 +750,6 @@ load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
     return 0;
 }
 
-/* Use zstd's stream API to compress data.
-   When success, return compressed data as a bytes object. */
-static inline PyObject*
-compress_loop(_zstd_state* state, ZSTD_CCtx* cctx, _BlocksOutputBuffer* buffer,
-              ZSTD_inBuffer* in, ZSTD_outBuffer* out, ZSTD_EndDirective end_directive)
-{
-    PyObject* ret;
-    size_t zstd_ret;
-
-    while (1) {
-        Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_compressStream2(cctx, out, in, end_directive);
-        Py_END_ALLOW_THREADS
-        
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-            return NULL;
-        }
-
-        /* Finished */
-        if (zstd_ret == 0) {
-            ret = OutputBuffer(Finish)(buffer, out);
-            if (ret != NULL) {
-                return ret;
-            }
-            else {
-                return NULL;
-            }
-        }
-
-        /* Output buffer exhausted, grow the buffer */
-        if (out->pos == out->size) {
-            if (OutputBuffer(Grow)(buffer, out) < 0) {
-                return NULL;
-            }
-        }
-
-        assert(in->pos <= in->size);
-    }
-}
-
 
 static PyObject*
 _ZstdCompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
@@ -881,11 +840,79 @@ _zstd_ZstdCompressor_init(ZstdCompressor *self, PyObject* args, PyObject* kwargs
     return 0;
 }
 
+static inline PyObject*
+compress_impl(ZstdCompressor* self, Py_buffer* data, ZSTD_EndDirective end_directive)
+{
+    ZSTD_inBuffer in;
+    ZSTD_outBuffer out;
+    _BlocksOutputBuffer buffer;
+    size_t zstd_ret;
+    PyObject* ret;
+    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
+
+    /* Prepare input & output buffers */
+    if (data != NULL) {
+        in.src = data->buf;
+        in.size = data->len;
+        in.pos = 0;
+    } else {
+        in.src = &in;
+        in.size = 0;
+        in.pos = 0;
+    }
+
+    /* OutputBuffer(OnError)(&buffer) is after `error` label,
+       so initialize the buffer before any `goto error` statement. */
+    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
+        goto error;
+    }
+
+    /* zstd stream compress */
+    while (1) {
+        Py_BEGIN_ALLOW_THREADS
+        zstd_ret = ZSTD_compressStream2(self->cctx, &out, &in, end_directive);
+        Py_END_ALLOW_THREADS
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            goto error;
+        }
+
+        /* Finished */
+        if (zstd_ret == 0) {
+            ret = OutputBuffer(Finish)(&buffer, &out);
+            if (ret != NULL) {
+                goto success;
+            }
+            else {
+                goto error;
+            }
+        }
+
+        /* Output buffer exhausted, grow the buffer */
+        if (out.pos == out.size) {
+            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
+                goto error;
+            }
+        }
+
+        assert(in.pos <= in.size);
+    }
+
+error:
+    OutputBuffer(OnError)(&buffer);
+    ret = NULL;
+success:
+    return ret;
+}
+
 /*[clinic input]
 _zstd.ZstdCompressor.compress
 
     data: Py_buffer
-    /
+    end_directive: int(c_default="ZSTD_e_continue") = _zstd._ZSTD_e_end
 
 Provide data to the compressor object.
 
@@ -896,40 +923,16 @@ flush() method to finish the compression process.
 [clinic start generated code]*/
 
 static PyObject *
-_zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data)
-/*[clinic end generated code: output=c3d452b67418aef6 input=a0d6204a6e438f15]*/
+_zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
+                                   int end_directive)
+/*[clinic end generated code: output=09f541ea51afd468 input=ff14b0133807665e]*/
 {
-    ZSTD_inBuffer in;
-    ZSTD_outBuffer out;
-    _BlocksOutputBuffer buffer;
     PyObject* ret;
-    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
-    assert(state != NULL);
 
     ACQUIRE_LOCK(self);
-
-    /* Prepare input & output buffers */
-    in.src = data->buf;
-    in.size = data->len;
-    in.pos = 0;
-
-    /* OutputBuffer(OnError)(&buffer) is after `error` label,
-       so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
-        goto error;
-    }
-
-    /* Do compress, compress_loop() is inlined function. */
-    ret = compress_loop(state, self->cctx, &buffer, &in, &out, ZSTD_e_continue);
-    if (ret != NULL) {
-        goto success;
-    }
-
-error:
-    OutputBuffer(OnError)(&buffer);
-    ret = NULL;
-success:
+    ret = compress_impl(self, data, end_directive);
     RELEASE_LOCK(self);
+
     return ret;
 }
 
@@ -951,41 +954,12 @@ static PyObject *
 _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
 /*[clinic end generated code: output=0206a53c394f4620 input=9f5cfc3560d831ac]*/
 {
-    ZSTD_inBuffer in;
-    ZSTD_outBuffer out;
-    _BlocksOutputBuffer buffer;
     PyObject* ret;
-    ZSTD_EndDirective end_directive;
-    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
-    assert(state != NULL);
 
     ACQUIRE_LOCK(self);
-
-    /* Prepare input & output buffers */
-    in.src = &in;
-    in.size = 0;
-    in.pos = 0;
-
-    /* OutputBuffer(OnError)(&buffer) is after `error` label,
-       so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
-        goto error;
-    }
-
-    /* Flush type */
-    end_directive = end_frame ? ZSTD_e_end : ZSTD_e_flush;
-
-    /* Do compress, compress_loop() is inlined function. */
-    ret = compress_loop(state, self->cctx, &buffer, &in, &out, end_directive);
-    if (ret != NULL) {
-        goto success;
-    }
-
-error:
-    OutputBuffer(OnError)(&buffer);
-    ret = NULL;
-success:
+    ret = compress_impl(self, NULL, end_frame ? ZSTD_e_end : ZSTD_e_flush);
     RELEASE_LOCK(self);
+
     return ret;
 }
 
@@ -1019,84 +993,6 @@ static PyType_Spec zstdcompressor_type_spec = {
     .flags = Py_TPFLAGS_DEFAULT,
     .slots = zstdcompressor_slots,
 };
-
-/*[clinic input]
-_zstd.compress
-
-    data: Py_buffer
-        Binary data to be compressed.
-    level_or_option: object = None
-        It can be an int object, in this case represents the compression
-        level. It can also be a dictionary for setting various advanced
-        parameters. The default value None means to use zstd's default
-        compression parameters.
-    dict: object = None
-        Pre-trained dictionary for compression, a ZstdDict object.
-
-Returns a bytes object containing compressed data.
-[clinic start generated code]*/
-
-static PyObject *
-_zstd_compress_impl(PyObject *module, Py_buffer *data,
-                    PyObject *level_or_option, PyObject *dict)
-/*[clinic end generated code: output=d960764f6635aad4 input=46aaf999c7c37417]*/
-{
-    ZSTD_CCtx *cctx = NULL;
-    ZSTD_inBuffer in;
-    ZSTD_outBuffer out;
-    _BlocksOutputBuffer buffer;
-    PyObject *ret;
-    _zstd_state *state = get_zstd_state(module);
-    int compress_level = 0;  /* 0 means use zstd's default compressionLevel */
-
-    /* Prepare input & output buffers */
-    in.src = data->buf;
-    in.size = data->len;
-    in.pos = 0;
-
-    /* OutputBuffer(OnError)(&buffer) is after `error` label,
-       so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
-        goto error;
-    }
-
-    /* Creat compress context */
-    cctx = ZSTD_createCCtx();
-    if (cctx == NULL) {
-        goto error;
-    }
-
-    /* Set compressionLevel/options to compress context */
-    if (level_or_option != Py_None) {
-        if (set_c_parameters(state, cctx, level_or_option, &compress_level) < 0) {
-            goto error;
-        }
-    }
-
-    /* Load dictionary to compress context */
-    if (dict != Py_None) {
-        if (load_c_dict(state, cctx, dict, compress_level) < 0) {
-            goto error;
-        }
-    }
-
-    /* Do compress, compress_loop() is inlined function.
-       Zstd optimizes the case where the first flush mode is ZSTD_e_end,
-       since it knows it is compressing the entire source in one pass. */
-    ret = compress_loop(state, cctx, &buffer, &in, &out, ZSTD_e_end);
-    if (ret != NULL) {
-        goto success;
-    }
-
-error:
-    OutputBuffer(OnError)(&buffer);
-    ret = NULL;
-success:
-    if (cctx != NULL) {
-        ZSTD_freeCCtx(cctx);
-    }
-    return ret;
-}
 
 
 /*[clinic input]
@@ -1263,37 +1159,57 @@ _zstd__get_dparam_bounds_impl(PyObject *module, int dParam)
     return ret;
 }
 
+static int
+module_add_int_constant(PyObject* m, const char* name, long long value)
+{
+    PyObject* o = PyLong_FromLongLong(value);
+    if (o == NULL) {
+        return -1;
+    }
+    if (PyModule_AddObject(m, name, o) == 0) {
+        return 0;
+    }
+    Py_DECREF(o);
+    return -1;
+}
 
 static int
 zstd_exec(PyObject *module)
 {
-#define ADD_INT_MACRO(module, macro)                                        \
+#define ADD_INT_PREFIX_MACRO(module, macro)                                 \
     do {                                                                    \
-        if (PyModule_AddIntMacro(module, macro) < 0) {                      \
+        if (module_add_int_constant(module, ("_" #macro), macro) < 0) {  \
             return -1;                                                      \
         }                                                                   \
-    } while (0)
+    } while(0)
 
     PyObject *temp;
 
-    ADD_INT_MACRO(module, ZSTD_c_compressionLevel);
-    ADD_INT_MACRO(module, ZSTD_c_windowLog);
-    ADD_INT_MACRO(module, ZSTD_c_hashLog);
-    ADD_INT_MACRO(module, ZSTD_c_chainLog);
-    ADD_INT_MACRO(module, ZSTD_c_searchLog);
-    ADD_INT_MACRO(module, ZSTD_c_minMatch);
-    ADD_INT_MACRO(module, ZSTD_c_targetLength);
-    ADD_INT_MACRO(module, ZSTD_c_strategy);
-    ADD_INT_MACRO(module, ZSTD_c_enableLongDistanceMatching);
-    ADD_INT_MACRO(module, ZSTD_c_ldmHashLog);
-    ADD_INT_MACRO(module, ZSTD_c_ldmMinMatch);
-    ADD_INT_MACRO(module, ZSTD_c_ldmBucketSizeLog);
-    ADD_INT_MACRO(module, ZSTD_c_ldmHashRateLog);
-    ADD_INT_MACRO(module, ZSTD_c_contentSizeFlag);
-    ADD_INT_MACRO(module, ZSTD_c_checksumFlag);
-    ADD_INT_MACRO(module, ZSTD_c_dictIDFlag);
+    /* Compress parameters */
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_compressionLevel);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_windowLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_hashLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_chainLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_searchLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_minMatch);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_targetLength);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_strategy);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_enableLongDistanceMatching);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmHashLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmMinMatch);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmBucketSizeLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmHashRateLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_contentSizeFlag);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_checksumFlag);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_dictIDFlag);
 
-    ADD_INT_MACRO(module, ZSTD_d_windowLogMax);
+    /* Decompress parameters */
+    ADD_INT_PREFIX_MACRO(module, ZSTD_d_windowLogMax);
+
+    /* EndDirective enum */
+    ADD_INT_PREFIX_MACRO(module, ZSTD_e_continue);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_e_flush);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_e_end);
 
     _zstd_state *state = get_zstd_state(module);
     state->ZstdError = NULL;
@@ -1359,7 +1275,6 @@ error:
 }
 
 static PyMethodDef _zstd_methods[] = {
-    _ZSTD_COMPRESS_METHODDEF
     _ZSTD_DECOMPRESS_METHODDEF
     _ZSTD__TRAIN_DICT_METHODDEF
     _ZSTD__GET_CPARAM_BOUNDS_METHODDEF
