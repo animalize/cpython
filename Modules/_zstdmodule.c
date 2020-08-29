@@ -1314,11 +1314,22 @@ static PyMethodDef _ZstdDecompressor_methods[] = {
     {NULL, NULL}
 };
 
+PyDoc_STRVAR(ZstdDecompressor_needs_input_doc,
+"True if more input is needed before more decompressed data can be produced.");
+
+
+static PyMemberDef _ZstdDecompressor_members[] = {
+    {"needs_input", T_BOOL, offsetof(ZstdDecompressor, needs_input),
+      READONLY, ZstdDecompressor_needs_input_doc},
+    {NULL}
+};
+
 static PyType_Slot zstddecompressor_slots[] = {
     {Py_tp_new, _ZstdDecompressor_new},
     {Py_tp_dealloc, _ZstdDecompressor_dealloc},
     {Py_tp_init, _zstd_ZstdDecompressor___init__},
     {Py_tp_methods, _ZstdDecompressor_methods},
+    {Py_tp_members, _ZstdDecompressor_members},
     //{Py_tp_doc, (char*)Decompressor_doc},
     {Py_tp_traverse, _ZstdDecompressor_traverse},
     {0, 0}
@@ -1516,16 +1527,6 @@ zstd_exec(PyObject *module)
         Py_DECREF(temp);
         goto error;
     }
-
-    // state->lzma_decompressor_type = (PyTypeObject *)PyType_FromModuleAndSpec(module,
-    //                                                      &lzma_decompressor_type_spec, NULL);
-    // if (state->lzma_decompressor_type == NULL) {
-    //     return -1;
-    // }
-
-    // if (PyModule_AddType(module, state->lzma_decompressor_type) < 0) {
-    //     return -1;
-    // }
 
     return 0;
 
