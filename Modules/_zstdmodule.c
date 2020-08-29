@@ -1347,6 +1347,7 @@ zstd_exec(PyObject *module)
     state->ZstdError = NULL;
     state->ZstdDict_type = NULL;
     state->ZstdCompressor_type = NULL;
+    state->ZstdDecompressor_type = NULL;
 
     /* ZstdError */
     state->ZstdError = PyErr_NewExceptionWithDoc("_zstd.ZstdError", "Call to zstd failed.", NULL, NULL);
@@ -1413,6 +1414,7 @@ error:
     Py_XDECREF(state->ZstdError);
     Py_XDECREF(state->ZstdDict_type);
     Py_XDECREF(state->ZstdCompressor_type);
+    Py_XDECREF(state->ZstdDecompressor_type);
     return -1;
 }
 
