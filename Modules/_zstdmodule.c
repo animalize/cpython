@@ -1111,19 +1111,23 @@ _zstd.ZstdDecompressor.decompress
     data: Py_buffer
     max_length: Py_ssize_t = -1
 
-Provide data to the compressor object.
+Decompress *data*, returning uncompressed data as bytes.
 
-Returns a chunk of compressed data if possible, or b'' otherwise.
+If *max_length* is nonnegative, returns at most *max_length* bytes of
+decompressed data. If this limit is reached and further output can be
+produced, *self.needs_input* will be set to ``False``. In this case, the next
+call to *decompress()* may provide *data* as b'' to obtain more of the output.
 
-When you have finished providing data to the compressor, call the
-flush() method to finish the compression process.
+If all of the input data was decompressed and returned (either because this
+was less than *max_length* bytes, or because *max_length* was negative),
+*self.needs_input* will be set to True.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
                                        Py_buffer *data,
                                        Py_ssize_t max_length)
-/*[clinic end generated code: output=a4302b3c940dbec6 input=3a50cda759c77fb4]*/
+/*[clinic end generated code: output=a4302b3c940dbec6 input=6563ea55f11b9ab5]*/
 {
     ZSTD_inBuffer in;
     ZSTD_outBuffer out;
@@ -1132,6 +1136,8 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     PyObject* ret;
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
+
+    ACQUIRE_LOCK(self);
 
     /* Prepare input & output buffers */
     in.src = data->buf;
@@ -1178,6 +1184,7 @@ error:
     OutputBuffer(OnError)(&buffer);
     ret = NULL;
 success:
+    RELEASE_LOCK(self);
     return ret;
 }
 

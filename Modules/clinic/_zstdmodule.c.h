@@ -249,12 +249,16 @@ PyDoc_STRVAR(_zstd_ZstdDecompressor_decompress__doc__,
 "decompress($self, /, data, max_length=-1)\n"
 "--\n"
 "\n"
-"Provide data to the compressor object.\n"
+"Decompress *data*, returning uncompressed data as bytes.\n"
 "\n"
-"Returns a chunk of compressed data if possible, or b\'\' otherwise.\n"
+"If *max_length* is nonnegative, returns at most *max_length* bytes of\n"
+"decompressed data. If this limit is reached and further output can be\n"
+"produced, *self.needs_input* will be set to ``False``. In this case, the next\n"
+"call to *decompress()* may provide *data* as b\'\' to obtain more of the output.\n"
 "\n"
-"When you have finished providing data to the compressor, call the\n"
-"flush() method to finish the compression process.");
+"If all of the input data was decompressed and returned (either because this\n"
+"was less than *max_length* bytes, or because *max_length* was negative),\n"
+"*self.needs_input* will be set to True.");
 
 #define _ZSTD_ZSTDDECOMPRESSOR_DECOMPRESS_METHODDEF    \
     {"decompress", (PyCFunction)(void(*)(void))_zstd_ZstdDecompressor_decompress, METH_FASTCALL|METH_KEYWORDS, _zstd_ZstdDecompressor_decompress__doc__},
@@ -382,4 +386,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=43a870f0bc2bb7cc input=a9049054013a1b77]*/
+/*[clinic end generated code: output=b2140cc29033a47d input=a9049054013a1b77]*/
