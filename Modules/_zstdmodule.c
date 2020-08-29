@@ -1209,103 +1209,6 @@ static PyType_Spec zstddecompressor_type_spec = {
     .slots = zstddecompressor_slots,
 };
 
-/*[clinic input]
-_zstd.decompress
-
-    data: Py_buffer
-        Compressed data.
-    dict: object = None
-        Pre-trained dictionary for compression, a ZstdDict object.
-    option: object = None
-        A dictionary for setting various advanced parameters. The default value
-        None means to use zstd's default decompression parameters.
-
-Returns a bytes object containing the uncompressed data.
-[clinic start generated code]*/
-
-static PyObject *
-_zstd_decompress_impl(PyObject *module, Py_buffer *data, PyObject *dict,
-                      PyObject *option)
-/*[clinic end generated code: output=de8e7aa123467657 input=e45ffba2bf54082d]*/
-{
-    ZSTD_DCtx *dctx = NULL;
-    ZSTD_inBuffer in;
-    ZSTD_outBuffer out;
-    _BlocksOutputBuffer buffer;
-    size_t zstd_ret;
-    PyObject *ret;
-    _zstd_state *state = get_zstd_state(module);
-
-    /* Prepare input & output buffers */
-    in.src = data->buf;
-    in.size = data->len;
-    in.pos = 0;
-
-    /* OutputBuffer(OnError)(&buffer) is after `error` label,
-       so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
-        goto error;
-    }
-
-    /* Creat zstd context */
-    dctx = ZSTD_createDCtx();
-    if (dctx == NULL) {
-        goto error;
-    }
-
-    /* Set options to decompress context */
-    if (option != Py_None) {
-        if (set_d_parameters(state, dctx, option) < 0) {
-            goto error;
-        }
-    }
-
-    /* Load dict to decompress context */
-    if (dict != Py_None) {
-        if (load_d_dict(state, dctx, dict) < 0) {
-            goto error;
-        }
-    }
-
-    while(1) {
-        Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_decompressStream(dctx, &out , &in);
-        Py_END_ALLOW_THREADS
-
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-            goto error;
-        }
-
-        /* Finished */
-        if (in.pos == in.size) {
-            ret = OutputBuffer(Finish)(&buffer, &out);
-            if (ret != NULL) {
-                goto success;
-            } else {
-                goto error;
-            }
-        }
-
-        /* Output buffer exhausted, grow the buffer. */
-        if (out.pos == out.size) {
-            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
-                goto error;
-            }
-        }
-    }
-
-error:
-    OutputBuffer(OnError)(&buffer);
-    ret = NULL;
-success:
-    if (dctx != NULL) {
-        ZSTD_freeDCtx(dctx);
-    }
-    return ret;
-}
-
 
 /*[clinic input]
 _zstd._get_cparam_bounds
@@ -1499,7 +1402,6 @@ error:
 }
 
 static PyMethodDef _zstd_methods[] = {
-    _ZSTD_DECOMPRESS_METHODDEF
     _ZSTD__TRAIN_DICT_METHODDEF
     _ZSTD__GET_CPARAM_BOUNDS_METHODDEF
     _ZSTD__GET_DPARAM_BOUNDS_METHODDEF
