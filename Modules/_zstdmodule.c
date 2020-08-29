@@ -805,7 +805,7 @@ _ZstdCompressor_dealloc(ZstdCompressor* self)
     Py_DECREF(tp);
 }
 
-/*[-clinic input]
+/*[clinic input]
 _zstd.ZstdCompressor.__init__
 
     level_or_option: object = None
@@ -817,23 +817,22 @@ _zstd.ZstdCompressor.__init__
         Pre-trained dictionary for compression, a ZstdDict object.
 
 Initialize ZstdCompressor object.
-[-clinic start generated code]*/
+[clinic start generated code]*/
+
 static int
-_zstd_ZstdCompressor_init(ZstdCompressor *self, PyObject* args, PyObject* kwargs)
+_zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
+                                   PyObject *level_or_option, PyObject *dict)
+/*[clinic end generated code: output=3688e3ca73e5d48f input=1a51f5a845ded76f]*/
 {
-    static char* arg_names[] = {"level_or_option", "dict", NULL};
-    PyObject* level_or_option = Py_None;
-    PyObject* dict = Py_None;
     int compress_level = 0; /* 0 means use zstd's default compression level */
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
 
-    /* Parse the arguments */
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs,
-                                     "|OO:ZstdCompressor", arg_names,
-                                     &level_or_option, &dict)) {
-        return -1;
-    }
+    ACQUIRE_LOCK(self);
+
+    /* Reset options and clear dict, __init__() may be called multiple times. */
+    ZSTD_CCtx_reset(self->cctx, ZSTD_reset_session_and_parameters);
+    Py_CLEAR(self->dict);
 
     /* Set compressLevel/options to compress context */
     if (level_or_option != Py_None) {
@@ -853,6 +852,7 @@ _zstd_ZstdCompressor_init(ZstdCompressor *self, PyObject* args, PyObject* kwargs
         self->dict = dict;
     }
 
+    RELEASE_LOCK(self);
     return 0;
 }
 
@@ -996,7 +996,7 @@ static PyMethodDef _ZstdCompressor_methods[] = {
 static PyType_Slot zstdcompressor_slots[] = {
     {Py_tp_new, _ZstdCompressor_new},
     {Py_tp_dealloc, _ZstdCompressor_dealloc},
-    {Py_tp_init, _zstd_ZstdCompressor_init},
+    {Py_tp_init, _zstd_ZstdCompressor___init__},
     {Py_tp_methods, _ZstdCompressor_methods},
     //{Py_tp_doc, (char*)Compressor_doc},
     {Py_tp_traverse, _ZstdCompressor_traverse},
