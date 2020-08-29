@@ -1418,7 +1418,19 @@ zstd_exec(PyObject *module)
     if (PyModule_AddObject(module, "zstd_version", temp) < 0) {
         Py_DECREF(temp);
         goto error;
-    } 
+    }
+
+    /* zstd_version_info */
+    if (!(temp = PyTuple_New(3))) {
+        goto error;
+    }
+    PyTuple_SET_ITEM(temp, 0, PyLong_FromLong(ZSTD_VERSION_MAJOR));
+    PyTuple_SET_ITEM(temp, 1, PyLong_FromLong(ZSTD_VERSION_MINOR));
+    PyTuple_SET_ITEM(temp, 2, PyLong_FromLong(ZSTD_VERSION_RELEASE));
+    if (PyModule_AddObject(module, "zstd_version_info", temp) < 0) {
+        Py_DECREF(temp);
+        goto error;
+    }
 
     // state->lzma_decompressor_type = (PyTypeObject *)PyType_FromModuleAndSpec(module,
     //                                                      &lzma_decompressor_type_spec, NULL);
