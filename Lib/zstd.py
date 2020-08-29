@@ -51,12 +51,37 @@ def compress(data, level_or_option=None, dict=None):
     """Compress a block of data.
 
     Refer to ZstdCompressor's docstring for a description of the
-    optional arguments *level_or_option*, *dict*.
+    optional arguments *level_or_option* and *dict*.
 
     For incremental compression, use an ZstdCompressor instead.
     """
     comp = ZstdCompressor(level_or_option, dict)
     return comp.compress(data, _zstd._ZSTD_e_end)
+
+def decompress(data, dict=None, option=None):
+    """Decompress a block of data.
+
+    Refer to ZstdDecompressor's docstring for a description of the
+    optional arguments *option* and *dict*.
+
+    For incremental decompression, use an ZstdDecompressor instead.
+    """
+    results = []
+    while True:
+        decomp = ZstdDecompressor(dict, option)
+        try:
+            res = decomp.decompress(data)
+        except ZstdError:
+            if results:
+                break  # Leftover data is not a valid LZMA/XZ stream; ignore it.
+            else:
+                raise  # Error on the first iteration; bail out.
+        results.append(res)
+
+        #data = decomp.unused_data
+        if not data:
+            break
+    return b"".join(results)
 
 def train_dict(iterable_of_chunks, dict_size=100*1024):
     chunks = []

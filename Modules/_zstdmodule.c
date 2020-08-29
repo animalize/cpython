@@ -1064,7 +1064,7 @@ _ZstdDecompressor_dealloc(ZstdDecompressor* self)
     Py_DECREF(tp);
 }
 
-/*[clinic input]
+/*[-clinic input]
 _zstd.ZstdDecompressor.__init__
 
     option: object = None
@@ -1074,15 +1074,22 @@ _zstd.ZstdDecompressor.__init__
         Pre-trained dictionary for decompression, a ZstdDict object.
 
 Initialize ZstdDecompressor object.
-[clinic start generated code]*/
-
+[-clinic start generated code]*/
 static int
-_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
-                                     PyObject *option, PyObject *dict)
-/*[clinic end generated code: output=2eb38a8251125609 input=81e971bdd7242778]*/
+_zstd_ZstdDecompressor_init(ZstdDecompressor* self, PyObject* args, PyObject* kwargs)
 {
+    static char* arg_names[] = { "dict", "option", NULL };
+    PyObject* dict = Py_None;
+    PyObject* option = Py_None;
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
+
+    /* Parse the arguments */
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs,
+                                     "|OO:ZstdDecompressor", arg_names,
+                                     &dict, &option)) {
+        return -1;
+    }
 
     /* Set compressLevel/options to compress context */
     if (option != Py_None) {
@@ -1196,13 +1203,14 @@ _ZstdDecompressor_traverse(ZstdDecompressor* self, visitproc visit, void* arg)
 }
 
 static PyMethodDef _ZstdDecompressor_methods[] = {
+    _ZSTD_ZSTDDECOMPRESSOR_DECOMPRESS_METHODDEF
     {NULL, NULL}
 };
 
 static PyType_Slot zstddecompressor_slots[] = {
     {Py_tp_new, _ZstdDecompressor_new},
     {Py_tp_dealloc, _ZstdDecompressor_dealloc},
-    {Py_tp_init, _zstd_ZstdDecompressor___init__},
+    {Py_tp_init, _zstd_ZstdDecompressor_init},
     {Py_tp_methods, _ZstdDecompressor_methods},
     //{Py_tp_doc, (char*)Decompressor_doc},
     {Py_tp_traverse, _ZstdDecompressor_traverse},

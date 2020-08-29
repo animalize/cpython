@@ -195,56 +195,6 @@ exit:
     return return_value;
 }
 
-PyDoc_STRVAR(_zstd_ZstdDecompressor___init____doc__,
-"ZstdDecompressor(option=None, dict=None)\n"
-"--\n"
-"\n"
-"Initialize ZstdDecompressor object.\n"
-"\n"
-"  option\n"
-"    A dictionary for setting advanced parameters. The default\n"
-"    value None means to use zstd\'s default decompression parameters.\n"
-"  dict\n"
-"    Pre-trained dictionary for decompression, a ZstdDict object.");
-
-static int
-_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
-                                     PyObject *option, PyObject *dict);
-
-static int
-_zstd_ZstdDecompressor___init__(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    int return_value = -1;
-    static const char * const _keywords[] = {"option", "dict", NULL};
-    static _PyArg_Parser _parser = {NULL, _keywords, "ZstdDecompressor", 0};
-    PyObject *argsbuf[2];
-    PyObject * const *fastargs;
-    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
-    Py_ssize_t noptargs = nargs + (kwargs ? PyDict_GET_SIZE(kwargs) : 0) - 0;
-    PyObject *option = Py_None;
-    PyObject *dict = Py_None;
-
-    fastargs = _PyArg_UnpackKeywords(_PyTuple_CAST(args)->ob_item, nargs, kwargs, NULL, &_parser, 0, 2, 0, argsbuf);
-    if (!fastargs) {
-        goto exit;
-    }
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    if (fastargs[0]) {
-        option = fastargs[0];
-        if (!--noptargs) {
-            goto skip_optional_pos;
-        }
-    }
-    dict = fastargs[1];
-skip_optional_pos:
-    return_value = _zstd_ZstdDecompressor___init___impl((ZstdDecompressor *)self, option, dict);
-
-exit:
-    return return_value;
-}
-
 PyDoc_STRVAR(_zstd_ZstdDecompressor_decompress__doc__,
 "decompress($self, /, data, max_length=-1)\n"
 "--\n"
@@ -386,4 +336,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=b2140cc29033a47d input=a9049054013a1b77]*/
+/*[clinic end generated code: output=bfb27a0afb85efd6 input=a9049054013a1b77]*/
