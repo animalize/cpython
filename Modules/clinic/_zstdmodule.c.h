@@ -89,7 +89,7 @@ exit:
 }
 
 PyDoc_STRVAR(_zstd_ZstdCompressor_compress__doc__,
-"compress($self, /, data, end_directive=_zstd._ZSTD_e_end)\n"
+"compress($self, /, data, end_directive=EndDirective.CONTINUE)\n"
 "--\n"
 "\n"
 "Provide data to the compressor object.\n"
@@ -336,4 +336,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=bfb27a0afb85efd6 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=70563959660cc9f3 input=a9049054013a1b77]*/

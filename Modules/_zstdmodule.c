@@ -928,7 +928,7 @@ success:
 _zstd.ZstdCompressor.compress
 
     data: Py_buffer
-    end_directive: int(c_default="ZSTD_e_continue") = _zstd._ZSTD_e_end
+    end_directive: int(c_default="ZSTD_e_continue") = EndDirective.CONTINUE
 
 Provide data to the compressor object.
 
@@ -941,7 +941,7 @@ flush() method to finish the compression process.
 static PyObject *
 _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
                                    int end_directive)
-/*[clinic end generated code: output=09f541ea51afd468 input=ff14b0133807665e]*/
+/*[clinic end generated code: output=09f541ea51afd468 input=901a2d3535fa9161]*/
 {
     PyObject* ret;
 
