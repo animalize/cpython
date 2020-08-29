@@ -438,4 +438,47 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=f5a45a82663c1209 input=a9049054013a1b77]*/
+
+PyDoc_STRVAR(_zstd_get_frame_info__doc__,
+"get_frame_info($module, /, frame_buffer)\n"
+"--\n"
+"\n"
+"Get zstd frame infomation.");
+
+#define _ZSTD_GET_FRAME_INFO_METHODDEF    \
+    {"get_frame_info", (PyCFunction)(void(*)(void))_zstd_get_frame_info, METH_FASTCALL|METH_KEYWORDS, _zstd_get_frame_info__doc__},
+
+static PyObject *
+_zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer);
+
+static PyObject *
+_zstd_get_frame_info(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"frame_buffer", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "get_frame_info", 0};
+    PyObject *argsbuf[1];
+    Py_buffer frame_buffer = {NULL, NULL};
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 1, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (PyObject_GetBuffer(args[0], &frame_buffer, PyBUF_SIMPLE) != 0) {
+        goto exit;
+    }
+    if (!PyBuffer_IsContiguous(&frame_buffer, 'C')) {
+        _PyArg_BadArgument("get_frame_info", "argument 'frame_buffer'", "contiguous buffer", args[0]);
+        goto exit;
+    }
+    return_value = _zstd_get_frame_info_impl(module, &frame_buffer);
+
+exit:
+    /* Cleanup for frame_buffer */
+    if (frame_buffer.obj) {
+       PyBuffer_Release(&frame_buffer);
+    }
+
+    return return_value;
+}
+/*[clinic end generated code: output=3821beb4ac882451 input=a9049054013a1b77]*/

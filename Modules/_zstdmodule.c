@@ -1409,6 +1409,87 @@ _zstd__get_dparam_bounds_impl(PyObject *module, int dParam)
     return ret;
 }
 
+/*[clinic input]
+_zstd.get_frame_info
+
+    frame_buffer: Py_buffer
+
+Get zstd frame infomation.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
+/*[clinic end generated code: output=56e033cf48001929 input=e9600625386ccae7]*/
+{
+    size_t compressed_size;
+    unsigned long long content_size;
+    char unknow_content_size;
+    UINT32 dict_id;
+    PyObject* temp;
+    PyObject* ret = NULL;
+    _zstd_state* state = get_zstd_state(module);
+
+    /* ZSTD_findFrameCompressedSize */
+    compressed_size = ZSTD_findFrameCompressedSize(frame_buffer->buf,
+                                                   frame_buffer->len);
+    if (ZSTD_isError(compressed_size)) {
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(compressed_size));
+        goto error;
+    }
+
+    /* ZSTD_getFrameContentSize */
+    content_size = ZSTD_getFrameContentSize(frame_buffer->buf,
+                                            frame_buffer->len);
+    if (content_size == ZSTD_CONTENTSIZE_UNKNOWN) {
+        unknow_content_size = 1;
+    } else if (content_size == ZSTD_CONTENTSIZE_ERROR) {
+        PyErr_SetString(state->ZstdError, "Error when getting frame content size.");
+        goto error;
+    } else {
+        unknow_content_size = 0;
+    }
+
+    /* ZSTD_getDictID_fromFrame */
+    dict_id = ZSTD_getDictID_fromFrame(frame_buffer->buf, frame_buffer->len);
+
+    /* Build tuple (compressed_size, content_size, dict_id) */
+    ret = PyTuple_New(3);
+    if (ret == NULL) {
+        goto error;
+    }
+
+    /* 0 */
+    temp = PyLong_FromSize_t(compressed_size);
+    if (temp == NULL) {
+        goto error;
+    }
+    PyTuple_SET_ITEM(ret, 0, temp);
+
+    /* 1 */
+    if (unknow_content_size) {
+        temp = Py_None;
+        Py_INCREF(temp);
+    } else {
+        temp = PyLong_FromLongLong(content_size);
+        if (temp == NULL) {
+            goto error;
+        }
+    }
+    PyTuple_SET_ITEM(ret, 1, temp);
+
+    /* 2 */
+    temp = PyLong_FromUnsignedLong(dict_id);
+    if (temp == NULL) {
+        goto error;
+    }
+    PyTuple_SET_ITEM(ret, 2, temp);
+
+    return ret;
+error:
+    Py_XDECREF(ret);
+    return NULL;
+}
+
 static int
 module_add_int_constant(PyObject* m, const char* name, long long value)
 {
@@ -1542,6 +1623,7 @@ static PyMethodDef _zstd_methods[] = {
     _ZSTD__TRAIN_DICT_METHODDEF
     _ZSTD__GET_CPARAM_BOUNDS_METHODDEF
     _ZSTD__GET_DPARAM_BOUNDS_METHODDEF
+    _ZSTD_GET_FRAME_INFO_METHODDEF
     {NULL}
 };
 
