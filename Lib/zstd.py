@@ -66,22 +66,9 @@ def decompress(data, dict=None, option=None):
 
     For incremental decompression, use an ZstdDecompressor instead.
     """
-    results = []
-    while True:
-        decomp = ZstdDecompressor(dict, option)
-        try:
-            res = decomp.decompress(data)
-        except ZstdError:
-            if results:
-                break  # Leftover data is not a valid LZMA/XZ stream; ignore it.
-            else:
-                raise  # Error on the first iteration; bail out.
-        results.append(res)
-
-        #data = decomp.unused_data
-        if not data:
-            break
-    return b"".join(results)
+    decomp = ZstdDecompressor(dict, option)
+    ret = decomp.decompress(data, -1)
+    return ret
 
 def train_dict(iterable_of_chunks, dict_size=100*1024):
     chunks = []

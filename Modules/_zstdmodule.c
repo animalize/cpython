@@ -1131,6 +1131,70 @@ success:
     return ret;
 }
 
+static inline PyObject*
+decompress_impl(ZstdDecompressor* self, 
+                ZSTD_inBuffer* in, ZSTD_outBuffer* out,
+                Py_buffer* data, Py_ssize_t max_length)
+{
+    size_t zstd_ret;
+    _BlocksOutputBuffer buffer;
+    PyObject* ret;
+    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
+
+    /* OutputBuffer(OnError)(&buffer) is after `error` label,
+       so initialize the buffer before any `goto error` statement. */
+    if (OutputBuffer(InitAndGrow)(&buffer, max_length, out) < 0) {
+        goto error;
+    }
+
+    while (1) {
+        Py_BEGIN_ALLOW_THREADS
+        zstd_ret = ZSTD_decompressStream(self->dctx, out, in);
+        Py_END_ALLOW_THREADS
+
+        /* Check error */
+        if (ZSTD_isError(zstd_ret)) {
+            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+            goto error;
+        }
+
+        /* Finished */
+        if (in->pos == in->size) {
+            ret = OutputBuffer(Finish)(&buffer, out);
+            if (ret != NULL) {
+                goto success;
+            } else {
+                goto error;
+            }
+        }
+
+        /* Output buffer exhausted, grow the buffer. */
+        if (out->pos == out->size) {
+            /* Output buffer reached max_length */
+            if (OutputBuffer(GetDataSize)(&buffer, out) == max_length) {
+                ret = OutputBuffer(Finish)(&buffer, out);
+                if (ret != NULL) {
+                    goto success;
+                } else {
+                    goto error;
+                }
+            }
+
+            /* Grow output buffer */
+            if (OutputBuffer(Grow)(&buffer, out) < 0) {
+                goto error;
+            }
+        }
+    }
+
+error:
+    OutputBuffer(OnError)(&buffer);
+    ret = NULL;
+success:
+    return ret;
+}
+
 /*[clinic input]
 _zstd.ZstdDecompressor.decompress
 
@@ -1157,11 +1221,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 {
     ZSTD_inBuffer in;
     ZSTD_outBuffer out;
-    _BlocksOutputBuffer buffer;
-    size_t zstd_ret;
     PyObject* ret;
-    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
-    assert(state != NULL);
 
     ACQUIRE_LOCK(self);
 
@@ -1170,43 +1230,14 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     in.size = data->len;
     in.pos = 0;
 
-    /* OutputBuffer(OnError)(&buffer) is after `error` label,
-       so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, max_length, &out) < 0) {
+    ret = decompress_impl(self, &in, &out, data, max_length);
+    if (ret == NULL) {
         goto error;
     }
 
-    while (1) {
-        Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_decompressStream(self->dctx, &out, &in);
-        Py_END_ALLOW_THREADS
-
-        /* Check error */
-        if (ZSTD_isError(zstd_ret)) {
-            PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-            goto error;
-        }
-
-        /* Finished */
-        if (in.pos == in.size) {
-            ret = OutputBuffer(Finish)(&buffer, &out);
-            if (ret != NULL) {
-                goto success;
-            } else {
-                goto error;
-            }
-        }
-
-        /* Output buffer exhausted, grow the buffer. */
-        if (out.pos == out.size) {
-            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
-                goto error;
-            }
-        }
-    }
+    goto success;
 
 error:
-    OutputBuffer(OnError)(&buffer);
     ret = NULL;
 success:
     RELEASE_LOCK(self);
