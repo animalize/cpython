@@ -195,6 +195,124 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_zstd_ZstdDecompressor___init____doc__,
+"ZstdDecompressor(option=None, dict=None)\n"
+"--\n"
+"\n"
+"Initialize ZstdDecompressor object.\n"
+"\n"
+"  option\n"
+"    A dictionary for setting advanced parameters. The default\n"
+"    value None means to use zstd\'s default decompression parameters.\n"
+"  dict\n"
+"    Pre-trained dictionary for decompression, a ZstdDict object.");
+
+static int
+_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
+                                     PyObject *option, PyObject *dict);
+
+static int
+_zstd_ZstdDecompressor___init__(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    int return_value = -1;
+    static const char * const _keywords[] = {"option", "dict", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "ZstdDecompressor", 0};
+    PyObject *argsbuf[2];
+    PyObject * const *fastargs;
+    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
+    Py_ssize_t noptargs = nargs + (kwargs ? PyDict_GET_SIZE(kwargs) : 0) - 0;
+    PyObject *option = Py_None;
+    PyObject *dict = Py_None;
+
+    fastargs = _PyArg_UnpackKeywords(_PyTuple_CAST(args)->ob_item, nargs, kwargs, NULL, &_parser, 0, 2, 0, argsbuf);
+    if (!fastargs) {
+        goto exit;
+    }
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    if (fastargs[0]) {
+        option = fastargs[0];
+        if (!--noptargs) {
+            goto skip_optional_pos;
+        }
+    }
+    dict = fastargs[1];
+skip_optional_pos:
+    return_value = _zstd_ZstdDecompressor___init___impl((ZstdDecompressor *)self, option, dict);
+
+exit:
+    return return_value;
+}
+
+PyDoc_STRVAR(_zstd_ZstdDecompressor_decompress__doc__,
+"decompress($self, /, data, max_length=-1)\n"
+"--\n"
+"\n"
+"Provide data to the compressor object.\n"
+"\n"
+"Returns a chunk of compressed data if possible, or b\'\' otherwise.\n"
+"\n"
+"When you have finished providing data to the compressor, call the\n"
+"flush() method to finish the compression process.");
+
+#define _ZSTD_ZSTDDECOMPRESSOR_DECOMPRESS_METHODDEF    \
+    {"decompress", (PyCFunction)(void(*)(void))_zstd_ZstdDecompressor_decompress, METH_FASTCALL|METH_KEYWORDS, _zstd_ZstdDecompressor_decompress__doc__},
+
+static PyObject *
+_zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
+                                       Py_buffer *data,
+                                       Py_ssize_t max_length);
+
+static PyObject *
+_zstd_ZstdDecompressor_decompress(ZstdDecompressor *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"data", "max_length", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "decompress", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    Py_buffer data = {NULL, NULL};
+    Py_ssize_t max_length = -1;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (PyObject_GetBuffer(args[0], &data, PyBUF_SIMPLE) != 0) {
+        goto exit;
+    }
+    if (!PyBuffer_IsContiguous(&data, 'C')) {
+        _PyArg_BadArgument("decompress", "argument 'data'", "contiguous buffer", args[0]);
+        goto exit;
+    }
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    {
+        Py_ssize_t ival = -1;
+        PyObject *iobj = _PyNumber_Index(args[1]);
+        if (iobj != NULL) {
+            ival = PyLong_AsSsize_t(iobj);
+            Py_DECREF(iobj);
+        }
+        if (ival == -1 && PyErr_Occurred()) {
+            goto exit;
+        }
+        max_length = ival;
+    }
+skip_optional_pos:
+    return_value = _zstd_ZstdDecompressor_decompress_impl(self, &data, max_length);
+
+exit:
+    /* Cleanup for data */
+    if (data.obj) {
+       PyBuffer_Release(&data);
+    }
+
+    return return_value;
+}
+
 PyDoc_STRVAR(_zstd_decompress__doc__,
 "decompress($module, /, data, dict=None, option=None)\n"
 "--\n"
@@ -330,4 +448,4 @@ _zstd__get_dparam_bounds(PyObject *module, PyObject *const *args, Py_ssize_t nar
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=a3e1671c1980d77b input=a9049054013a1b77]*/
+/*[clinic end generated code: output=242ca154abaa81ae input=a9049054013a1b77]*/
