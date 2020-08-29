@@ -662,8 +662,7 @@ load_c_dict(_zstd_state* state, ZSTD_CCtx* cctx,
     ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
     if (ret < 0) {
         return -1;
-    }
-    else if (ret == 0) {
+    } else if (ret == 0) {
         PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
         return -1;
     }
@@ -742,8 +741,7 @@ load_d_dict(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* dict)
     ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
     if (ret < 0) {
         return -1;
-    }
-    else if (ret == 0) {
+    } else if (ret == 0) {
         PyErr_SetString(PyExc_TypeError, "dict argument should be ZstdDict object.");
         return -1;
     }
@@ -912,8 +910,7 @@ compress_impl(ZstdCompressor* self, Py_buffer* data, ZSTD_EndDirective end_direc
             ret = OutputBuffer(Finish)(&buffer, &out);
             if (ret != NULL) {
                 goto success;
-            }
-            else {
+            } else {
                 goto error;
             }
         }
@@ -1195,8 +1192,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
             ret = OutputBuffer(Finish)(&buffer, &out);
             if (ret != NULL) {
                 goto success;
-            }
-            else {
+            } else {
                 goto error;
             }
         }
