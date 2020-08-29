@@ -824,27 +824,33 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
                                    PyObject *level_or_option, PyObject *dict)
 /*[clinic end generated code: output=3688e3ca73e5d48f input=1a51f5a845ded76f]*/
 {
+    size_t zstd_ret;
     int compress_level = 0; /* 0 means use zstd's default compression level */
+    int ret = 0;
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
 
     ACQUIRE_LOCK(self);
 
-    /* Reset options and clear dict, __init__() may be called multiple times. */
-    ZSTD_CCtx_reset(self->cctx, ZSTD_reset_session_and_parameters);
+    /* __init__() may be called multiple times, reset options and clear dict. */
+    zstd_ret = ZSTD_CCtx_reset(self->cctx, ZSTD_reset_session_and_parameters);
+    if (ZSTD_isError(zstd_ret)) {
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+        goto error;
+    }
     Py_CLEAR(self->dict);
 
     /* Set compressLevel/options to compress context */
     if (level_or_option != Py_None) {
         if (set_c_parameters(state, self->cctx, level_or_option, &compress_level) < 0) {
-            return -1;
+            goto error;
         }
     }
 
     /* Load dictionary to compress context */
     if (dict != Py_None) {
         if (load_c_dict(state, self->cctx, dict, compress_level) < 0) {
-            return -1;
+            goto error;
         }
 
         /* Py_INCREF the dict */
@@ -852,8 +858,13 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
         self->dict = dict;
     }
 
+    goto success;
+
+error:
+    ret = -1;
+success:
     RELEASE_LOCK(self);
-    return 0;
+    return ret;
 }
 
 static inline PyObject*
@@ -1064,44 +1075,49 @@ _ZstdDecompressor_dealloc(ZstdDecompressor* self)
     Py_DECREF(tp);
 }
 
-/*[-clinic input]
+/*[clinic input]
 _zstd.ZstdDecompressor.__init__
 
+    dict: object = None
+        Pre-trained dictionary for decompression, a ZstdDict object.
     option: object = None
         A dictionary for setting advanced parameters. The default
         value None means to use zstd's default decompression parameters.
-    dict: object = None
-        Pre-trained dictionary for decompression, a ZstdDict object.
 
 Initialize ZstdDecompressor object.
-[-clinic start generated code]*/
+[clinic start generated code]*/
+
 static int
-_zstd_ZstdDecompressor_init(ZstdDecompressor* self, PyObject* args, PyObject* kwargs)
+_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
+                                     PyObject *option)
+/*[clinic end generated code: output=667351c5096f94cb input=4dc564486c5dc983]*/
 {
-    static char* arg_names[] = { "dict", "option", NULL };
-    PyObject* dict = Py_None;
-    PyObject* option = Py_None;
+    size_t zstd_ret;
+    int ret = 0;
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
 
-    /* Parse the arguments */
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs,
-                                     "|OO:ZstdDecompressor", arg_names,
-                                     &dict, &option)) {
-        return -1;
+    ACQUIRE_LOCK(self);
+
+    /* __init__() may be called multiple times, reset options and clear dict. */
+    zstd_ret = ZSTD_DCtx_reset(self->dctx, ZSTD_reset_session_and_parameters);
+    if (ZSTD_isError(zstd_ret)) {
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
+        goto error;
     }
+    Py_CLEAR(self->dict);
 
     /* Set compressLevel/options to compress context */
     if (option != Py_None) {
         if (set_d_parameters(state, self->dctx, option) < 0) {
-            return -1;
+            goto error;
         }
     }
 
     /* Load dictionary to compress context */
     if (dict != Py_None) {
         if (load_d_dict(state, self->dctx, dict) < 0) {
-            return -1;
+            goto error;
         }
 
         /* Py_INCREF the dict */
@@ -1109,7 +1125,13 @@ _zstd_ZstdDecompressor_init(ZstdDecompressor* self, PyObject* args, PyObject* kw
         self->dict = dict;
     }
 
-    return 0;
+    goto success;
+
+error:
+    ret = -1;
+success:
+    RELEASE_LOCK(self);
+    return ret;
 }
 
 /*[clinic input]
@@ -1210,7 +1232,7 @@ static PyMethodDef _ZstdDecompressor_methods[] = {
 static PyType_Slot zstddecompressor_slots[] = {
     {Py_tp_new, _ZstdDecompressor_new},
     {Py_tp_dealloc, _ZstdDecompressor_dealloc},
-    {Py_tp_init, _zstd_ZstdDecompressor_init},
+    {Py_tp_init, _zstd_ZstdDecompressor___init__},
     {Py_tp_methods, _ZstdDecompressor_methods},
     //{Py_tp_doc, (char*)Decompressor_doc},
     {Py_tp_traverse, _ZstdDecompressor_traverse},
