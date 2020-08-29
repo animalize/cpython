@@ -277,6 +277,7 @@ _BlocksOutputBuffer_OnError(_BlocksOutputBuffer *buffer)
 typedef struct {
     PyTypeObject *ZstdDict_type;
     PyTypeObject* ZstdCompressor_type;
+    PyTypeObject* ZstdDecompressor_type;
     PyObject *ZstdError;
 } _zstd_state;
 
@@ -1403,6 +1404,16 @@ zstd_exec(PyObject *module)
         goto error;
     }
     if (PyModule_AddType(module, (PyTypeObject*)state->ZstdCompressor_type) < 0) {
+        goto error;
+    }
+
+    /* ZstdDecompressor */
+    state->ZstdDecompressor_type = (PyTypeObject*)PyType_FromModuleAndSpec(module,
+                                                  &zstddecompressor_type_spec, NULL);
+    if (state->ZstdDecompressor_type == NULL) {
+        goto error;
+    }
+    if (PyModule_AddType(module, (PyTypeObject*)state->ZstdDecompressor_type) < 0) {
         goto error;
     }
 
