@@ -1107,14 +1107,14 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
     }
     Py_CLEAR(self->dict);
 
-    /* Set compressLevel/options to compress context */
+    /* Set decompressLevel/options to decompress context */
     if (option != Py_None) {
         if (set_d_parameters(state, self->dctx, option) < 0) {
             goto error;
         }
     }
 
-    /* Load dictionary to compress context */
+    /* Load dictionary to decompress context */
     if (dict != Py_None) {
         if (load_d_dict(state, self->dctx, dict) < 0) {
             goto error;
