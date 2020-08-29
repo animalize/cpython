@@ -41,9 +41,7 @@ typedef struct {
     ZSTD_DCtx* dctx;
     PyObject* dict;
 
-    PyObject* unused_data;
     char needs_input;
-
     uint8_t* input_buffer;
     size_t input_buffer_size;
 
@@ -1034,9 +1032,7 @@ _ZstdDecompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
     self->dict = NULL;
 
-    self->unused_data = NULL;
     self->needs_input = 1;
-
     self->input_buffer = NULL;
     self->input_buffer_size = 0;
 
@@ -1055,9 +1051,7 @@ static void
 _ZstdDecompressor_dealloc(ZstdDecompressor* self)
 {
     ZSTD_freeDCtx(self->dctx);
-
-    Py_XDECREF(self->unused_data);
-    
+  
     if (self->input_buffer != NULL) {
         PyMem_Free(self->input_buffer);
     }
@@ -1122,6 +1116,13 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
         self->dict = dict;
     }
 
+    /* Clear unconsumed data */
+    if (self->input_buffer) {
+        PyMem_Free(self->input_buffer);
+        self->input_buffer = NULL;
+    }
+    self->input_buffer_size = 0;
+
     goto success;
 
 error:
@@ -1132,11 +1133,11 @@ success:
 }
 
 static inline PyObject*
-decompress_impl(ZstdDecompressor* self, 
-                ZSTD_inBuffer* in, ZSTD_outBuffer* out,
+decompress_impl(ZstdDecompressor* self, ZSTD_inBuffer* in,
                 Py_buffer* data, Py_ssize_t max_length)
 {
     size_t zstd_ret;
+    ZSTD_outBuffer out;
     _BlocksOutputBuffer buffer;
     PyObject* ret;
     _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
@@ -1144,13 +1145,13 @@ decompress_impl(ZstdDecompressor* self,
 
     /* OutputBuffer(OnError)(&buffer) is after `error` label,
        so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, max_length, out) < 0) {
+    if (OutputBuffer(InitAndGrow)(&buffer, max_length, &out) < 0) {
         goto error;
     }
 
     while (1) {
         Py_BEGIN_ALLOW_THREADS
-        zstd_ret = ZSTD_decompressStream(self->dctx, out, in);
+        zstd_ret = ZSTD_decompressStream(self->dctx, &out, in);
         Py_END_ALLOW_THREADS
 
         /* Check error */
@@ -1161,7 +1162,7 @@ decompress_impl(ZstdDecompressor* self,
 
         /* Finished */
         if (in->pos == in->size) {
-            ret = OutputBuffer(Finish)(&buffer, out);
+            ret = OutputBuffer(Finish)(&buffer, &out);
             if (ret != NULL) {
                 goto success;
             } else {
@@ -1170,10 +1171,10 @@ decompress_impl(ZstdDecompressor* self,
         }
 
         /* Output buffer exhausted, grow the buffer. */
-        if (out->pos == out->size) {
+        if (out.pos == out.size) {
             /* Output buffer reached max_length */
-            if (OutputBuffer(GetDataSize)(&buffer, out) == max_length) {
-                ret = OutputBuffer(Finish)(&buffer, out);
+            if (OutputBuffer(GetDataSize)(&buffer, &out) == max_length) {
+                ret = OutputBuffer(Finish)(&buffer, &out);
                 if (ret != NULL) {
                     goto success;
                 } else {
@@ -1182,7 +1183,7 @@ decompress_impl(ZstdDecompressor* self,
             }
 
             /* Grow output buffer */
-            if (OutputBuffer(Grow)(&buffer, out) < 0) {
+            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
                 goto error;
             }
         }
@@ -1220,24 +1221,81 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 /*[clinic end generated code: output=a4302b3c940dbec6 input=6563ea55f11b9ab5]*/
 {
     ZSTD_inBuffer in;
-    ZSTD_outBuffer out;
     PyObject* ret;
+    uint8_t* temp;
 
     ACQUIRE_LOCK(self);
 
-    /* Prepare input & output buffers */
-    in.src = data->buf;
-    in.size = data->len;
+    /* Input position */
     in.pos = 0;
 
-    ret = decompress_impl(self, &in, &out, data, max_length);
+    /* Has unconsumed data */
+    if (self->input_buffer) {
+        temp = PyMem_Realloc(self->input_buffer,
+                             self->input_buffer_size + data->len);
+        if (temp == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+        memcpy(temp + self->input_buffer_size, data->buf, data->len);
+
+        self->input_buffer = temp;
+        self->input_buffer_size += data->len;
+
+        in.src = self->input_buffer;
+        in.size = self->input_buffer_size;
+    } else {
+        in.src = data->buf;
+        in.size = data->len;
+    }
+
+    /* Decompress */
+    ret = decompress_impl(self, &in, data, max_length);
     if (ret == NULL) {
         goto error;
+    }
+
+    if (in.pos < in.size) {
+        /* Has unconsumed data */
+        self->needs_input = 0;
+
+        size_t const buffer_size = in.size - in.pos;
+        temp = PyMem_Malloc(buffer_size);
+        if (temp == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+
+        memcpy(temp, (uint8_t*)in.src + in.pos, buffer_size);
+        
+        if (self->input_buffer) {
+            PyMem_Free(self->input_buffer);
+        }
+
+        self->input_buffer = temp;
+        self->input_buffer_size = buffer_size;
+    } else if (in.pos == in.size) {
+        /* All data has been unconsumed */
+        self->needs_input = 1;
+
+        /* Clear input_buffer */
+        if (self->input_buffer) {
+            PyMem_Free(self->input_buffer);
+            self->input_buffer = NULL;
+        }
+        self->input_buffer_size = 0;
     }
 
     goto success;
 
 error:
+    /* Clear unconsumed data */
+    if (self->input_buffer) {
+        PyMem_Free(self->input_buffer);
+        self->input_buffer = NULL;
+    }
+    self->input_buffer_size = 0;
+
     ret = NULL;
 success:
     RELEASE_LOCK(self);
