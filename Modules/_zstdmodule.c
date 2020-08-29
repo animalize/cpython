@@ -590,7 +590,7 @@ set_c_parameters(_zstd_state* state, ZSTD_CCtx* cctx,
         *compress_level = _PyLong_AsInt(level_or_option);
         if (*compress_level == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError,
-                "Compress level should be 32-bit signed int value.");
+                            "Compress level should be 32-bit signed int value.");
             return -1;
         }
 
@@ -600,8 +600,8 @@ set_c_parameters(_zstd_state* state, ZSTD_CCtx* cctx,
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
             PyErr_Format(state->ZstdError,
-                "Error when setting compression level: %s",
-                ZSTD_getErrorName(zstd_ret));
+                         "Error when setting compression level: %s",
+                         ZSTD_getErrorName(zstd_ret));
             return -1;
         }
         return 0;
@@ -616,14 +616,14 @@ set_c_parameters(_zstd_state* state, ZSTD_CCtx* cctx,
             int key_v = _PyLong_AsInt(key);
             if (key_v == -1 && PyErr_Occurred()) {
                 PyErr_SetString(PyExc_ValueError,
-                    "Key of option dict should be 32-bit signed int value.");
+                                "Key of option dict should be 32-bit signed int value.");
                 return -1;
             }
 
             int value_v = _PyLong_AsInt(value);
             if (value_v == -1 && PyErr_Occurred()) {
                 PyErr_SetString(PyExc_ValueError,
-                    "Value of option dict should be 32-bit signed int value.");
+                                "Value of option dict should be 32-bit signed int value.");
                 return -1;
             }
 
@@ -636,8 +636,8 @@ set_c_parameters(_zstd_state* state, ZSTD_CCtx* cctx,
             zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
             if (ZSTD_isError(zstd_ret)) {
                 PyErr_Format(state->ZstdError,
-                    "Error when setting the %dth parameter in option argument: %s",
-                    pos, ZSTD_getErrorName(zstd_ret));
+                             "Error when setting the %dth parameter in option argument: %s",
+                             pos, ZSTD_getErrorName(zstd_ret));
                 return -1;
             }
         }
@@ -705,14 +705,14 @@ set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
         int key_v = _PyLong_AsInt(key);
         if (key_v == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError,
-                "Key of option dict should be 32-bit signed integer value.");
+                            "Key of option dict should be 32-bit signed integer value.");
             return -1;
         }
 
         int value_v = _PyLong_AsInt(value);
         if (value_v == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError,
-                "Value of option dict should be 32-bit signed integer value.");
+                            "Value of option dict should be 32-bit signed integer value.");
             return -1;
         }
 
@@ -722,8 +722,8 @@ set_d_parameters(_zstd_state* state, ZSTD_DCtx* dctx, PyObject* option)
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
             PyErr_Format(state->ZstdError,
-                "Error when setting the %dth parameter in option argument: %s",
-                pos, ZSTD_getErrorName(zstd_ret));
+                         "Error when setting the %dth parameter in option argument: %s",
+                         pos, ZSTD_getErrorName(zstd_ret));
             return -1;
         }
     }
