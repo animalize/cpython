@@ -35,13 +35,28 @@ typedef struct {
     PyThread_type_lock lock;
 } ZstdCompressor;
 
+typedef struct {
+    PyObject_HEAD
+
+    ZSTD_DCtx* dctx;
+    PyObject* dict;
+
+    PyObject* unused_data;
+    char needs_input;
+
+    uint8_t* input_buffer;
+    size_t input_buffer_size;
+
+    PyThread_type_lock lock;
+} ZstdDecompressor;
 
 /*[clinic input]
 module _zstd
 class _zstd.ZstdDict "ZstdDict *" "&ZstdDict_Type"
 class _zstd.ZstdCompressor "ZstdCompressor *" "&ZstdCompressor_type"
+class _zstd.ZstdDecompressor "ZstdDecompressor *" "&ZstdDecompressor_type"
 [clinic start generated code]*/
-/*[clinic end generated code: output=da39a3ee5e6b4b0d input=1b2910840e0d6dc8]*/
+/*[clinic end generated code: output=da39a3ee5e6b4b0d input=7208e8cc544a5228]*/
 
 #include "clinic\_zstdmodule.c.h"
 
@@ -994,6 +1009,87 @@ static PyType_Spec zstdcompressor_type_spec = {
     .slots = zstdcompressor_slots,
 };
 
+/* ZstdDecompressor */
+
+static PyObject*
+_ZstdDecompressor_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    ZstdDecompressor* self;
+    self = (ZstdDecompressor*)type->tp_alloc(type, 0);
+
+    self->dctx = ZSTD_createDCtx();
+    if (self->dctx == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Unable to create ZSTD_DCtx instance.");
+        return NULL;
+    }
+
+    self->dict = NULL;
+
+    self->unused_data = NULL;
+    self->needs_input = 1;
+
+    self->input_buffer = NULL;
+    self->input_buffer_size = 0;
+
+    self->lock = PyThread_allocate_lock();
+    if (self->lock == NULL) {
+        ZSTD_freeDCtx(self->dctx);
+
+        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
+        return NULL;
+    }
+
+    return (PyObject*)self;
+}
+
+static void
+_ZstdDecompressor_dealloc(ZstdDecompressor* self)
+{
+    ZSTD_freeDCtx(self->dctx);
+
+    Py_XDECREF(self->unused_data);
+    
+    if (self->input_buffer != NULL) {
+        PyMem_Free(self->input_buffer);
+    }
+
+    /* Py_XDECREF the dict after free the compress context */
+    Py_XDECREF(self->dict);
+
+    PyThread_free_lock(self->lock);
+
+    PyTypeObject* tp = Py_TYPE(self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
+}
+
+static int
+_ZstdDecompressor_traverse(ZstdDecompressor* self, visitproc visit, void* arg)
+{
+    Py_VISIT(Py_TYPE(self));
+    return 0;
+}
+
+static PyMethodDef _ZstdDecompressor_methods[] = {
+    {NULL, NULL}
+};
+
+static PyType_Slot zstddecompressor_slots[] = {
+    {Py_tp_new, _ZstdDecompressor_new},
+    {Py_tp_dealloc, _ZstdDecompressor_dealloc},
+    //{Py_tp_init, _zstd_ZstdDecompressor_init},
+    {Py_tp_methods, _ZstdDecompressor_methods},
+    //{Py_tp_doc, (char*)Decompressor_doc},
+    {Py_tp_traverse, _ZstdDecompressor_traverse},
+    {0, 0}
+};
+
+static PyType_Spec zstddecompressor_type_spec = {
+    .name = "_zstd.ZstdDecompressor",
+    .basicsize = sizeof(ZstdDecompressor),
+    .flags = Py_TPFLAGS_DEFAULT,
+    .slots = zstddecompressor_slots,
+};
 
 /*[clinic input]
 _zstd.decompress
