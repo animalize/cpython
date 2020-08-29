@@ -1063,6 +1063,56 @@ _ZstdDecompressor_dealloc(ZstdDecompressor* self)
     Py_DECREF(tp);
 }
 
+/*[-clinic input]
+_zstd.ZstdDecompressor.__init__
+
+    option: object = None
+        A dictionary for setting advanced parameters. The default
+        value None means to use zstd's default decompression parameters.
+    dict: object = None
+        Pre-trained dictionary for compression, a ZstdDict object.
+
+Initialize ZstdDecompressor object.
+[-clinic start generated code]*/
+static int
+_zstd_ZstdDecompressor_init(ZstdDecompressor* self, PyObject* args, PyObject* kwargs)
+{
+    static char* arg_names[] = { "option", "dict", NULL };
+    PyObject* option = Py_None;
+    PyObject* dict = Py_None;
+    int compress_level = 0; /* 0 means use zstd's default compression level */
+    _zstd_state* state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
+
+    /* Parse the arguments */
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs,
+                                     "|OO:ZstdDecompressor", arg_names,
+                                     &option, &dict)) {
+        return -1;
+    }
+
+    /* Set compressLevel/options to compress context */
+    if (option != Py_None) {
+        if (set_d_parameters(state, self->dctx, option) < 0) {
+            return -1;
+        }
+    }
+
+    /* Load dictionary to compress context */
+    if (dict != Py_None) {
+        if (load_d_dict(state, self->dctx, dict) < 0) {
+            return -1;
+        }
+
+        /* Py_INCREF the dict */
+        Py_INCREF(dict);
+        self->dict = dict;
+    }
+
+    return 0;
+}
+
+
 static int
 _ZstdDecompressor_traverse(ZstdDecompressor* self, visitproc visit, void* arg)
 {
@@ -1077,7 +1127,7 @@ static PyMethodDef _ZstdDecompressor_methods[] = {
 static PyType_Slot zstddecompressor_slots[] = {
     {Py_tp_new, _ZstdDecompressor_new},
     {Py_tp_dealloc, _ZstdDecompressor_dealloc},
-    //{Py_tp_init, _zstd_ZstdDecompressor_init},
+    {Py_tp_init, _zstd_ZstdDecompressor_init},
     {Py_tp_methods, _ZstdDecompressor_methods},
     //{Py_tp_doc, (char*)Decompressor_doc},
     {Py_tp_traverse, _ZstdDecompressor_traverse},
