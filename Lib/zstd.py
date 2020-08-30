@@ -2,7 +2,7 @@ __all__ = ('ZstdDict', 'ZstdError',
            'compress', 'decompress',
            'train_dict', 'get_frame_info',
            'ZstdCompressor', 'ZstdDecompressor',
-           'EndDirective',
+           'Strategy', 'EndDirective',
            'CompressParameter', 'DecompressParameter')
 
 import builtins

@@ -301,11 +301,11 @@ get_zstd_state(PyObject *module)
    ----------------------------------- */
 
 typedef struct {
-    int parameter_value;
-    char parameter_name[32];
+    const int parameter_value;
+    const char parameter_name[32];
 } ParameterInfo;
 
-static ParameterInfo cp_list[] =
+static const ParameterInfo cp_list[] =
 {
     {ZSTD_c_compressionLevel, "compressionLevel"},
     {ZSTD_c_windowLog,        "windowLog"},
@@ -325,7 +325,7 @@ static ParameterInfo cp_list[] =
     {ZSTD_c_dictIDFlag,       "dictIDFlag"}
 };
 
-static ParameterInfo dp_list[] =
+static const ParameterInfo dp_list[] =
 {
     {ZSTD_d_windowLogMax, "windowLogMax"}
 };
@@ -336,17 +336,20 @@ static inline void
 get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
                         int key_v, int value_v, char is_compress)
 {
-    ZSTD_bounds bounds;
-    char *name;
-    ParameterInfo *list;
+    ParameterInfo const *list;
     int list_size;
+    char const *name;
+    char *type;
+    ZSTD_bounds bounds;
 
     if (is_compress) {
         list = cp_list;
         list_size = Py_ARRAY_LENGTH(cp_list);
+        type = "compress";
     } else {
         list = dp_list;
         list_size = Py_ARRAY_LENGTH(dp_list);
+        type = "decompress";
     }
 
     /* Find parameter's name */
@@ -360,8 +363,8 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
     /* Not a valid parameter */
     if (name == NULL) {
         PyOS_snprintf(buf, buf_size,
-                      "The %zdth zstd %s parameter is invalid.", pos,
-                      is_compress ? "compress" : "decompress");
+                      "The %zdth zstd %s parameter is invalid.",
+                      pos, type);
         return;
     }
 
@@ -374,7 +377,7 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
     if (ZSTD_isError(bounds.error)) {
         PyOS_snprintf(buf, buf_size,
                       "Error when getting bounds of zstd %s parameter \"%s\".",
-                      is_compress ? "compress" : "decompress", name);
+                      type, name);
         return;
     }
 
@@ -382,8 +385,7 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
     PyOS_snprintf(buf, buf_size,
                   "Error when setting zstd %s parameter \"%s\", it "
                   "should %d <= value <= %d, provided value is %d.",
-                  is_compress ? "compress" : "decompress", name,
-                  bounds.lowerBound, bounds.upperBound, value_v);
+                  type, name, bounds.lowerBound, bounds.upperBound, value_v);
 }
 
 static int
