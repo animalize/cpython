@@ -766,7 +766,7 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
                  PyObject *level_or_option, int *compress_level)
 {
     size_t zstd_ret;
-    char buf[160];
+    char msg_buf[160];
 
     /* Integer compression level */
     if (PyLong_Check(level_or_option)) {
@@ -819,8 +819,8 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
             /* Set parameter to compress context */
             zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
             if (ZSTD_isError(zstd_ret)) {
-                get_parameter_error_msg(buf, sizeof(buf), pos, key_v, value_v, 1),
-                PyErr_Format(state->ZstdError, buf);
+                get_parameter_error_msg(msg_buf, sizeof(msg_buf), pos, key_v, value_v, 1),
+                PyErr_Format(state->ZstdError, msg_buf);
                 return -1;
             }
         }
@@ -876,7 +876,7 @@ set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
     size_t zstd_ret;
     PyObject *key, *value;
     Py_ssize_t pos;
-    char buf[160];
+    char msg_buf[160];
 
     if (!PyDict_Check(option)) {
         PyErr_SetString(PyExc_TypeError, "option argument wrong type.");
@@ -905,8 +905,8 @@ set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
 
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
-            get_parameter_error_msg(buf, sizeof(buf), pos, key_v, value_v, 0),
-            PyErr_Format(state->ZstdError, buf);
+            get_parameter_error_msg(msg_buf, sizeof(msg_buf), pos, key_v, value_v, 0),
+            PyErr_Format(state->ZstdError, msg_buf);
             return -1;
         }
     }
