@@ -528,16 +528,18 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     ZstdDict *self;
     self = (ZstdDict*)type->tp_alloc(type, 0);
 
-    self->dict_content = NULL;
-    self->dict_id = 0;
+    assert(self->dict_content == NULL);
+    assert(self->dict_id == 0);
+    assert(self->d_dict == NULL);
+    assert(self->inited == 0);
 
+    /* ZSTD_CDict dict */
     self->c_dicts = PyDict_New();
     if (self->c_dicts == NULL) {
         return NULL;
     }
 
-    self->d_dict = NULL;
-
+    /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
         Py_DECREF(self->c_dicts);
@@ -545,25 +547,23 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    self->inited = 0;
-
     return (PyObject*)self;
 }
 
 static void
 _ZstdDict_dealloc(ZstdDict *self)
 {
+    /* Free ZSTD_CDict/ZSTD_DDict instances */
     Py_DECREF(self->c_dicts);
-
     if (self->d_dict) {
         ZSTD_freeDDict(self->d_dict);
     }
 
-    PyThread_free_lock(self->lock);
-
-    /* Release dict_buffer at the end, self->c_dicts and self->d_dict
-       may refer to self->dict_buffer. */
+    /* Release dict_content after Free ZSTD_CDict/ZSTD_DDict instances */
     Py_DECREF(self->dict_content);
+
+    /* Free thread lock */
+    PyThread_free_lock(self->lock);
 
     PyTypeObject *tp = Py_TYPE(self);
     tp->tp_free((PyObject*)self);
@@ -593,7 +593,6 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
     /* Check dict_content's type */
     self->dict_content = PyBytes_FromObject(dict_content);
     if (self->dict_content == NULL) {
-        PyErr_Clear();
         PyErr_SetString(PyExc_TypeError,
                         "dict_content argument should be bytes-like object.");
         return -1;
@@ -650,7 +649,7 @@ _ZstdDict_traverse(ZstdDict *self, visitproc visit, void *arg)
 static PyObject *
 _ZstdDict_repr(ZstdDict *dict)
 {
-    char buf[128];
+    char buf[64];
     PyOS_snprintf(buf, sizeof(buf),
         "<ZstdDict dict_id=%u dict_size=%zd>",
         dict->dict_id, Py_SIZE(dict->dict_content));
