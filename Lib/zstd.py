@@ -1,9 +1,3 @@
-__all__ = ('ZstdDict', 'ZstdError',
-           'compress', 'decompress',
-           'train_dict', 'get_frame_info',
-           'ZstdCompressor', 'ZstdDecompressor',
-           'Strategy', 'EndDirective',
-           'CompressParameter', 'DecompressParameter')
 
 import _compression
 from enum import IntEnum
