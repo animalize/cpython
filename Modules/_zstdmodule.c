@@ -48,14 +48,22 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
+    /* Decompress context */
     ZSTD_DCtx *dctx;
+
+    /* ZstdDict object in use */
     PyObject *dict;
 
+    /* False if input_buffer has unconsumed data */
     char needs_input;
     uint8_t *input_buffer;
     size_t input_buffer_size;
 
+    /* Thread lock for compressing */
     PyThread_type_lock lock;
+
+    /* __init__ has been called */
+    int inited;
 } ZstdDecompressor;
 
 /*[clinic input]
@@ -1212,18 +1220,22 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     ZstdDecompressor *self;
     self = (ZstdDecompressor*)type->tp_alloc(type, 0);
 
+    assert(self->dict == NULL);
+    assert(self->input_buffer == NULL);
+    assert(self->input_buffer_size == 0);
+    assert(self->inited == 0);
+
+    /* Need input flag */
+    self->needs_input = 1;
+
+    /* Decompress context */
     self->dctx = ZSTD_createDCtx();
     if (self->dctx == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Unable to create ZSTD_DCtx instance.");
         return NULL;
     }
 
-    self->dict = NULL;
-
-    self->needs_input = 1;
-    self->input_buffer = NULL;
-    self->input_buffer_size = 0;
-
+    /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
         ZSTD_freeDCtx(self->dctx);
@@ -1238,15 +1250,18 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static void
 _ZstdDecompressor_dealloc(ZstdDecompressor *self)
 {
+    /* Free decompress context */
     ZSTD_freeDCtx(self->dctx);
-  
+
+    /* Free Unconsumed input data buffer */
     if (self->input_buffer != NULL) {
         PyMem_Free(self->input_buffer);
     }
 
-    /* Py_XDECREF the dict after free the compress context */
+    /* Py_XDECREF the dict after free decompress context */
     Py_XDECREF(self->dict);
 
+    /* Free thread lock */
     PyThread_free_lock(self->lock);
 
     PyTypeObject *tp = Py_TYPE(self);
@@ -1271,32 +1286,28 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
                                      PyObject *option)
 /*[clinic end generated code: output=667351c5096f94cb input=4dc564486c5dc983]*/
 {
-    size_t zstd_ret;
-    int ret = 0;
     _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
 
-    ACQUIRE_LOCK(self);
-
-    /* __init__() may be called multiple times, reset options and clear dict. */
-    zstd_ret = ZSTD_DCtx_reset(self->dctx, ZSTD_reset_session_and_parameters);
-    if (ZSTD_isError(zstd_ret)) {
-        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-        goto error;
+    /* Only called once */
+    if (self->inited) {
+        PyErr_SetString(PyExc_RuntimeError, 
+                        "ZstdDecompressor.__init__ function was called twice.");
+        return -1;
     }
-    Py_CLEAR(self->dict);
+    self->inited = 1;
 
     /* Set decompressLevel/options to decompress context */
     if (option != Py_None) {
         if (set_d_parameters(state, self->dctx, option) < 0) {
-            goto error;
+            return -1;
         }
     }
 
     /* Load dictionary to decompress context */
     if (dict != Py_None) {
         if (load_d_dict(state, self->dctx, dict) < 0) {
-            goto error;
+            return -1;
         }
 
         /* Py_INCREF the dict */
@@ -1304,21 +1315,7 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
         self->dict = dict;
     }
 
-    /* Clear unconsumed data */
-    self->needs_input = 1;
-    if (self->input_buffer) {
-        PyMem_Free(self->input_buffer);
-        self->input_buffer = NULL;
-    }
-    self->input_buffer_size = 0;
-
-    goto success;
-
-error:
-    ret = -1;
-success:
-    RELEASE_LOCK(self);
-    return ret;
+    return 0;
 }
 
 static inline PyObject *
