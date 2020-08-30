@@ -70,6 +70,23 @@ class DecompressParameter(IntEnum):
                 raise ZstdError(msg)
 
 
+class Strategy(IntEnum):
+    """Compression strategies, listed from fastest to strongest.
+
+       Note : new strategies _might_ be added in the future, only the order
+       (from fast to strong) is guaranteed.
+    """
+    fast     = _zstd._ZSTD_fast
+    dfast    = _zstd._ZSTD_dfast
+    greedy   = _zstd._ZSTD_greedy
+    lazy     = _zstd._ZSTD_lazy
+    lazy2    = _zstd._ZSTD_lazy2
+    btlazy2  = _zstd._ZSTD_btlazy2
+    btopt    = _zstd._ZSTD_btopt
+    btultra  = _zstd._ZSTD_btultra
+    btultra2 = _zstd._ZSTD_btultra2
+
+
 class EndDirective(IntEnum):
     """Stream compressor's end directive.
     

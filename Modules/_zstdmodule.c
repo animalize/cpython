@@ -1645,6 +1645,17 @@ zstd_exec(PyObject *module)
         goto error;
     }
 
+    /* ZSTD_strategy enum */
+    ADD_INT_PREFIX_MACRO(module, ZSTD_fast);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_dfast);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_greedy);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_lazy);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_lazy2);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btlazy2);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btopt);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btultra);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btultra2);
+
     /* EndDirective enum */
     ADD_INT_PREFIX_MACRO(module, ZSTD_e_continue);
     ADD_INT_PREFIX_MACRO(module, ZSTD_e_flush);
