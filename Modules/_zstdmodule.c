@@ -1627,6 +1627,17 @@ zstd_exec(PyObject *module)
         goto error;
     }
 
+    /* level_bounds */
+    if (!(temp = PyTuple_New(2))) {
+        goto error;
+    }
+    PyTuple_SET_ITEM(temp, 0, PyLong_FromLong(ZSTD_minCLevel()));
+    PyTuple_SET_ITEM(temp, 1, PyLong_FromLong(ZSTD_maxCLevel()));
+    if (PyModule_AddObject(module, "level_bounds", temp) < 0) {
+        Py_DECREF(temp);
+        goto error;
+    }
+
     return 0;
 
 error:
@@ -1654,8 +1665,10 @@ static int
 _zstd_traverse(PyObject *module, visitproc visit, void *arg)
 {
     _zstd_state *state = get_zstd_state(module);
-    Py_VISIT(state->ZstdDict_type);
     Py_VISIT(state->ZstdError);
+    Py_VISIT(state->ZstdDict_type);
+    Py_VISIT(state->ZstdCompressor_type);
+    Py_VISIT(state->ZstdDecompressor_type);
     return 0;
 }
 
@@ -1663,8 +1676,10 @@ static int
 _zstd_clear(PyObject *module)
 {
     _zstd_state *state = get_zstd_state(module);
-    Py_CLEAR(state->ZstdDict_type);
     Py_CLEAR(state->ZstdError);
+    Py_CLEAR(state->ZstdDict_type);
+    Py_CLEAR(state->ZstdCompressor_type);
+    Py_CLEAR(state->ZstdDecompressor_type);
     return 0;
 }
 
