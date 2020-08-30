@@ -36,6 +36,24 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_zstd_ZstdDict___reduce____doc__,
+"__reduce__($self, /)\n"
+"--\n"
+"\n"
+"Return state information for pickling.");
+
+#define _ZSTD_ZSTDDICT___REDUCE___METHODDEF    \
+    {"__reduce__", (PyCFunction)_zstd_ZstdDict___reduce__, METH_NOARGS, _zstd_ZstdDict___reduce____doc__},
+
+static PyObject *
+_zstd_ZstdDict___reduce___impl(ZstdDict *self);
+
+static PyObject *
+_zstd_ZstdDict___reduce__(ZstdDict *self, PyObject *Py_UNUSED(ignored))
+{
+    return _zstd_ZstdDict___reduce___impl(self);
+}
+
 PyDoc_STRVAR(_zstd__train_dict__doc__,
 "_train_dict($module, /, dst_data, dst_data_sizes, dict_size)\n"
 "--\n"
@@ -488,4 +506,4 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=9858e784c978bf13 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=cdea288fc3b7fc91 input=a9049054013a1b77]*/

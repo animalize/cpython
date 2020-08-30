@@ -5,9 +5,6 @@ __all__ = ('ZstdDict', 'ZstdError',
            'Strategy', 'EndDirective',
            'CompressParameter', 'DecompressParameter')
 
-import builtins
-import io
-import os
 import _compression
 from enum import IntEnum
 
@@ -127,3 +124,4 @@ def train_dict(iterable_of_chunks, dict_size=100*1024):
     dict_content = _zstd._train_dict(chunks, chunk_sizes, dict_size)
 
     return ZstdDict(dict_content)
+

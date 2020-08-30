@@ -599,7 +599,23 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
     return 0;
 }
 
+
+/*[clinic input]
+_zstd.ZstdDict.__reduce__
+
+Return state information for pickling.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd_ZstdDict___reduce___impl(ZstdDict *self)
+/*[clinic end generated code: output=5c9b8a3550429417 input=1a45441f8f3f7085]*/
+{
+    return Py_BuildValue("O(O)", Py_TYPE(self), self->dict_content);
+}
+
+
 static PyMethodDef _ZstdDict_methods[] = {
+    _ZSTD_ZSTDDICT___REDUCE___METHODDEF
     {NULL}
 };
 
