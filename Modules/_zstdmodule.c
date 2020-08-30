@@ -1429,14 +1429,13 @@ _zstd.get_frame_info
 
 Get zstd frame infomation.
 
-Return a three-items tuple: (frame_size, decompressed_size, dictinary_id). If
-decompressed size is unknown, it will be None. If no dictionary, dictinary_id
-will be 0.
+Return a three-items tuple: (decompressed_size, dictinary_id). If decompressed
+size is unknown, it will be None. If no dictionary, dictinary_id will be 0.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
-/*[clinic end generated code: output=56e033cf48001929 input=8725f3c68f9bbfcc]*/
+/*[clinic end generated code: output=56e033cf48001929 input=23c7c2557e996f06]*/
 {
     unsigned long long content_size;
     char unknown_content_size;
@@ -1451,7 +1450,11 @@ _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
     if (content_size == ZSTD_CONTENTSIZE_UNKNOWN) {
         unknown_content_size = 1;
     } else if (content_size == ZSTD_CONTENTSIZE_ERROR) {
-        PyErr_SetString(state->ZstdError, "Error when getting frame content size.");
+        PyErr_SetString(state->ZstdError,
+                        "Error when getting frame content size, "
+                        "please make sure that frame_buffer points "
+                        "to the beginning of a frame and provide "
+                        "a size larger than the frame header.");
         goto error;
     } else {
         unknown_content_size = 0;

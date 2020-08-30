@@ -449,9 +449,8 @@ PyDoc_STRVAR(_zstd_get_frame_info__doc__,
 "    The start bytes of a frame, a frame header is 6-18 bytes, should not\n"
 "    be smaller than this size.\n"
 "\n"
-"Return a three-items tuple: (frame_size, decompressed_size, dictinary_id). If\n"
-"decompressed size is unknown, it will be None. If no dictionary, dictinary_id\n"
-"will be 0.");
+"Return a three-items tuple: (decompressed_size, dictinary_id). If decompressed\n"
+"size is unknown, it will be None. If no dictionary, dictinary_id will be 0.");
 
 #define _ZSTD_GET_FRAME_INFO_METHODDEF    \
     {"get_frame_info", (PyCFunction)(void(*)(void))_zstd_get_frame_info, METH_FASTCALL|METH_KEYWORDS, _zstd_get_frame_info__doc__},
@@ -489,4 +488,4 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=05e21e9136a9e98f input=a9049054013a1b77]*/
+/*[clinic end generated code: output=9858e784c978bf13 input=a9049054013a1b77]*/
