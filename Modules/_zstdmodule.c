@@ -1840,7 +1840,7 @@ zstd_exec(PyObject *module)
         goto error;
     }
 
-    /* level_bounds */
+    /* compress_level_bounds */
     if (!(temp = PyTuple_New(2))) {
         goto error;
     }
