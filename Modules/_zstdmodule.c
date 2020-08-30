@@ -722,7 +722,7 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
                  PyObject *level_or_option, int *compress_level)
 {
     size_t zstd_ret;
-    char buf[128];
+    char buf[160];
 
     /* Integer compression level */
     if (PyLong_Check(level_or_option)) {
@@ -832,7 +832,7 @@ set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
     size_t zstd_ret;
     PyObject *key, *value;
     Py_ssize_t pos;
-    char buf[128];
+    char buf[160];
 
     if (!PyDict_Check(option)) {
         PyErr_SetString(PyExc_TypeError, "option argument wrong type.");
