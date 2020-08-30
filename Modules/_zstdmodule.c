@@ -1672,6 +1672,41 @@ error:
 }
 
 
+/*[clinic input]
+_zstd.get_frame_size
+
+    frame_buffer: Py_buffer
+        At least one complete frame, start at a frame's first byte.
+
+Get the size of a zstd frame.
+
+It will iterate all the blocks in a frame.
+[clinic start generated code]*/
+
+static PyObject *
+_zstd_get_frame_size_impl(PyObject *module, Py_buffer *frame_buffer)
+/*[clinic end generated code: output=a7384c2f8780f442 input=67213417bcbc2db6]*/
+{
+    size_t frame_size;
+    PyObject *ret;
+
+    frame_size = ZSTD_findFrameCompressedSize(frame_buffer->buf, frame_buffer->len);
+    if (ZSTD_isError(frame_size)) {
+        _zstd_state *state = get_zstd_state(module);
+        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(frame_size));
+        return NULL;
+    }
+
+    ret = PyLong_FromSize_t(frame_size);
+    if (ret == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    return ret;
+}
+
+
 static int
 zstd_exec(PyObject *module)
 {
@@ -1791,6 +1826,7 @@ static PyMethodDef _zstd_methods[] = {
     _ZSTD__GET_CPARAM_BOUNDS_METHODDEF
     _ZSTD__GET_DPARAM_BOUNDS_METHODDEF
     _ZSTD_GET_FRAME_INFO_METHODDEF
+    _ZSTD_GET_FRAME_SIZE_METHODDEF
     {NULL}
 };
 

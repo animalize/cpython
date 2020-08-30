@@ -506,4 +506,52 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=cdea288fc3b7fc91 input=a9049054013a1b77]*/
+
+PyDoc_STRVAR(_zstd_get_frame_size__doc__,
+"get_frame_size($module, /, frame_buffer)\n"
+"--\n"
+"\n"
+"Get the size of a zstd frame.\n"
+"\n"
+"  frame_buffer\n"
+"    At least one complete frame, start at a frame\'s first byte.\n"
+"\n"
+"It will iterate all the blocks in a frame.");
+
+#define _ZSTD_GET_FRAME_SIZE_METHODDEF    \
+    {"get_frame_size", (PyCFunction)(void(*)(void))_zstd_get_frame_size, METH_FASTCALL|METH_KEYWORDS, _zstd_get_frame_size__doc__},
+
+static PyObject *
+_zstd_get_frame_size_impl(PyObject *module, Py_buffer *frame_buffer);
+
+static PyObject *
+_zstd_get_frame_size(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"frame_buffer", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "get_frame_size", 0};
+    PyObject *argsbuf[1];
+    Py_buffer frame_buffer = {NULL, NULL};
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 1, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (PyObject_GetBuffer(args[0], &frame_buffer, PyBUF_SIMPLE) != 0) {
+        goto exit;
+    }
+    if (!PyBuffer_IsContiguous(&frame_buffer, 'C')) {
+        _PyArg_BadArgument("get_frame_size", "argument 'frame_buffer'", "contiguous buffer", args[0]);
+        goto exit;
+    }
+    return_value = _zstd_get_frame_size_impl(module, &frame_buffer);
+
+exit:
+    /* Cleanup for frame_buffer */
+    if (frame_buffer.obj) {
+       PyBuffer_Release(&frame_buffer);
+    }
+
+    return return_value;
+}
+/*[clinic end generated code: output=db4e2e407f735d4c input=a9049054013a1b77]*/
