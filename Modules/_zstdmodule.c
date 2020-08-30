@@ -1187,7 +1187,7 @@ _zstd_ZstdCompressor___reduce___impl(ZstdCompressor *self)
 /*[clinic end generated code: output=1042cabbf3957e9c input=d943c46618a56ffe]*/
 {
     PyErr_Format(PyExc_TypeError,
-                 "cannot pickle %s object",
+                 "Cannot pickle %s object.",
                  Py_TYPE(self)->tp_name);
     return NULL;
 }
@@ -1519,7 +1519,7 @@ _zstd_ZstdDecompressor___reduce___impl(ZstdDecompressor *self)
 /*[clinic end generated code: output=3b2f7c81240639b5 input=9eda5eb42eec2e2b]*/
 {
     PyErr_Format(PyExc_TypeError,
-                 "cannot pickle %s object",
+                 "Cannot pickle %s object.",
                  Py_TYPE(self)->tp_name);
     return NULL;
 }
