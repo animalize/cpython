@@ -295,13 +295,17 @@ get_zstd_state(PyObject *module)
     } } while (0)
 #define RELEASE_LOCK(obj) PyThread_release_lock((obj)->lock)
 
-/* Parameters from zstd */
+
+/* -----------------------------------
+     Parameters from zstd 
+   ----------------------------------- */
+
 typedef struct {
-    const int parameter_value;
-    const char parameter_name[32];
+    int parameter_value;
+    char parameter_name[32];
 } ParameterInfo;
 
-static const ParameterInfo cp_info[] =
+static ParameterInfo cp_list[] =
 {
     {ZSTD_c_compressionLevel, "compressionLevel"},
     {ZSTD_c_windowLog,        "windowLog"},
@@ -321,10 +325,66 @@ static const ParameterInfo cp_info[] =
     {ZSTD_c_dictIDFlag,       "dictIDFlag"}
 };
 
-static const ParameterInfo dp_info[] =
+static ParameterInfo dp_list[] =
 {
     {ZSTD_d_windowLogMax, "windowLogMax"}
 };
+
+
+/* Format an user friendly error mssage. */
+static inline void
+get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
+                        int key_v, int value_v, char is_compress)
+{
+    ZSTD_bounds bounds;
+    char *name;
+    ParameterInfo *list;
+    int list_size;
+
+    if (is_compress) {
+        list = cp_list;
+        list_size = Py_ARRAY_LENGTH(cp_list);
+    } else {
+        list = dp_list;
+        list_size = Py_ARRAY_LENGTH(dp_list);
+    }
+
+    /* Find parameter's name */
+    name = NULL;
+    for (int i = 0; i < list_size; i++) {
+        if (key_v == (list+i)->parameter_value) {
+            name = (list+i)->parameter_name;
+        }
+    }
+    
+    /* Not a valid parameter */
+    if (name == NULL) {
+        PyOS_snprintf(buf, buf_size,
+                      "The %zdth zstd %s parameter is invalid.", pos,
+                      is_compress ? "compress" : "decompress");
+        return;
+    }
+
+    /* Get parameter bounds */
+    if (is_compress) {
+        bounds = ZSTD_cParam_getBounds(key_v);
+    } else {
+        bounds = ZSTD_dParam_getBounds(key_v);
+    }
+    if (ZSTD_isError(bounds.error)) {
+        PyOS_snprintf(buf, buf_size,
+                      "Error when getting bounds of zstd %s parameter \"%s\".",
+                      is_compress ? "compress" : "decompress", name);
+        return;
+    }
+
+    /* Error message */
+    PyOS_snprintf(buf, buf_size,
+                  "Error when setting zstd %s parameter \"%s\", it "
+                  "should %d <= value <= %d, provided value is %d.",
+                  is_compress ? "compress" : "decompress", name,
+                  bounds.lowerBound, bounds.upperBound, value_v);
+}
 
 static int
 module_add_int_constant(PyObject *m, const char *name, long long value)
@@ -662,6 +722,7 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
                  PyObject *level_or_option, int *compress_level)
 {
     size_t zstd_ret;
+    char buf[128];
 
     /* Integer compression level */
     if (PyLong_Check(level_or_option)) {
@@ -714,9 +775,8 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
             /* Set parameter to compress context */
             zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
             if (ZSTD_isError(zstd_ret)) {
-                PyErr_Format(state->ZstdError,
-                             "Error when setting the %dth parameter in option argument: %s",
-                             pos, ZSTD_getErrorName(zstd_ret));
+                get_parameter_error_msg(buf, sizeof(buf), pos, key_v, value_v, 1),
+                PyErr_Format(state->ZstdError, buf);
                 return -1;
             }
         }
@@ -772,6 +832,7 @@ set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
     size_t zstd_ret;
     PyObject *key, *value;
     Py_ssize_t pos;
+    char buf[128];
 
     if (!PyDict_Check(option)) {
         PyErr_SetString(PyExc_TypeError, "option argument wrong type.");
@@ -800,9 +861,8 @@ set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
 
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
-            PyErr_Format(state->ZstdError,
-                         "Error when setting the %dth parameter in option argument: %s",
-                         pos, ZSTD_getErrorName(zstd_ret));
+            get_parameter_error_msg(buf, sizeof(buf), pos, key_v, value_v, 0),
+            PyErr_Format(state->ZstdError, buf);
             return -1;
         }
     }
