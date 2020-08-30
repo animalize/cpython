@@ -58,6 +58,9 @@ class _zstd.ZstdDecompressor "ZstdDecompressor *" "&ZstdDecompressor_type"
 
 #include "clinic\_zstdmodule.c.h"
 
+/* -----------------------------------
+     BlocksOutputBuffer code 
+   ----------------------------------- */
 #define BLOCK_OUTPUT_BUFFER_CODE_BLOCK
 #ifdef BLOCK_OUTPUT_BUFFER_CODE_BLOCK
 /* _BlocksOutputBuffer code */
@@ -301,7 +304,7 @@ get_zstd_state(PyObject *module)
    ----------------------------------- */
 
 typedef struct {
-    const int parameter_value;
+    const int parameter;
     const char parameter_name[32];
 } ParameterInfo;
 
@@ -342,6 +345,8 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
     char *type;
     ZSTD_bounds bounds;
 
+    assert(buf_size >= 160);
+
     if (is_compress) {
         list = cp_list;
         list_size = Py_ARRAY_LENGTH(cp_list);
@@ -355,7 +360,7 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
     /* Find parameter's name */
     name = NULL;
     for (int i = 0; i < list_size; i++) {
-        if (key_v == (list+i)->parameter_value) {
+        if (key_v == (list+i)->parameter) {
             name = (list+i)->parameter_name;
         }
     }
@@ -436,7 +441,10 @@ add_parameters(PyObject *module)
     return 0;
 }
 
-/* ZstdDict code begin */
+
+/* -----------------------------------
+     ZstdDict code 
+   ----------------------------------- */
 static void
 capsule_free_cdict(PyObject *capsule)
 {
