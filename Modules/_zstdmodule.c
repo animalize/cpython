@@ -24,6 +24,9 @@ typedef struct {
 
     /* Thread lock for generating ZSTD_CDict/ZSTD_DDict */
     PyThread_type_lock lock;
+
+    /* __init__ has been called */
+    int inited;
 } ZstdDict;
 
 typedef struct {
@@ -542,6 +545,8 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
+    self->inited = 0;
+
     return (PyObject*)self;
 }
 
@@ -578,9 +583,19 @@ static int
 _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
 /*[clinic end generated code: output=49ae79dcbb8ad2df input=85b3c5d16d12a001]*/
 {
+    /* Only called once */
+    if (self->inited) {
+        PyErr_SetString(PyExc_RuntimeError, "ZstdDict.__init__ function was called twice.");
+        return -1;
+    }
+    self->inited = 1;
+
     /* Check dict_content's type */
-    if (!PyBytes_Check(dict_content)) {
-        PyErr_SetString(PyExc_TypeError, "dict_content should be bytes object.");
+    self->dict_content = PyBytes_FromObject(dict_content);
+    if (self->dict_content == NULL) {
+        PyErr_Clear();
+        PyErr_SetString(PyExc_TypeError,
+                        "dict_content argument should be bytes-like object.");
         return -1;
     }
 
@@ -588,13 +603,10 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
     self->dict_id = ZDICT_getDictID(PyBytes_AS_STRING(dict_content),
                                     Py_SIZE(dict_content));
     if (self->dict_id == 0) {
+        Py_CLEAR(self->dict_content);
         PyErr_SetString(PyExc_ValueError, "Not a valid Zstd dictionary content.");
         return -1;
     }
-
-    /* Set dict_content */
-    Py_INCREF(dict_content);
-    self->dict_content = dict_content;
 
     return 0;
 }
