@@ -1438,21 +1438,12 @@ static PyObject *
 _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
 /*[clinic end generated code: output=56e033cf48001929 input=8725f3c68f9bbfcc]*/
 {
-    size_t compressed_size;
     unsigned long long content_size;
     char unknown_content_size;
     UINT32 dict_id;
     PyObject *temp;
     PyObject *ret = NULL;
     _zstd_state *state = get_zstd_state(module);
-
-    /* ZSTD_findFrameCompressedSize */
-    compressed_size = ZSTD_findFrameCompressedSize(frame_buffer->buf,
-                                                   frame_buffer->len);
-    if (ZSTD_isError(compressed_size)) {
-        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(compressed_size));
-        goto error;
-    }
 
     /* ZSTD_getFrameContentSize */
     content_size = ZSTD_getFrameContentSize(frame_buffer->buf,
@@ -1470,20 +1461,13 @@ _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
     dict_id = ZSTD_getDictID_fromFrame(frame_buffer->buf, frame_buffer->len);
 
     /* Build tuple */
-    ret = PyTuple_New(3);
+    ret = PyTuple_New(2);
     if (ret == NULL) {
         PyErr_NoMemory();
         goto error;
     }
 
-    /* 0, compressed_size */
-    temp = PyLong_FromSize_t(compressed_size);
-    if (temp == NULL) {
-        goto error;
-    }
-    PyTuple_SET_ITEM(ret, 0, temp);
-
-    /* 1, content_size */
+    /* 0, content_size */
     if (unknown_content_size) {
         temp = Py_None;
         Py_INCREF(temp);
@@ -1493,14 +1477,14 @@ _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
             goto error;
         }
     }
-    PyTuple_SET_ITEM(ret, 1, temp);
+    PyTuple_SET_ITEM(ret, 0, temp);
 
-    /* 2, dict_id */
+    /* 1, dict_id */
     temp = PyLong_FromUnsignedLong(dict_id);
     if (temp == NULL) {
         goto error;
     }
-    PyTuple_SET_ITEM(ret, 2, temp);
+    PyTuple_SET_ITEM(ret, 1, temp);
 
     return ret;
 error:
