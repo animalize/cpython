@@ -1618,7 +1618,6 @@ _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
     UINT32 dict_id;
     PyObject *temp;
     PyObject *ret = NULL;
-    _zstd_state *state = get_zstd_state(module);
 
     /* ZSTD_getFrameContentSize */
     content_size = ZSTD_getFrameContentSize(frame_buffer->buf,
@@ -1626,6 +1625,7 @@ _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
     if (content_size == ZSTD_CONTENTSIZE_UNKNOWN) {
         unknown_content_size = 1;
     } else if (content_size == ZSTD_CONTENTSIZE_ERROR) {
+        _zstd_state *state = get_zstd_state(module);
         PyErr_SetString(state->ZstdError,
                         "Error when getting frame content size, "
                         "please make sure that frame_buffer points "
