@@ -265,6 +265,23 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_zstd_ZstdCompressor___reduce____doc__,
+"__reduce__($self, /)\n"
+"--\n"
+"\n");
+
+#define _ZSTD_ZSTDCOMPRESSOR___REDUCE___METHODDEF    \
+    {"__reduce__", (PyCFunction)_zstd_ZstdCompressor___reduce__, METH_NOARGS, _zstd_ZstdCompressor___reduce____doc__},
+
+static PyObject *
+_zstd_ZstdCompressor___reduce___impl(ZstdCompressor *self);
+
+static PyObject *
+_zstd_ZstdCompressor___reduce__(ZstdCompressor *self, PyObject *Py_UNUSED(ignored))
+{
+    return _zstd_ZstdCompressor___reduce___impl(self);
+}
+
 PyDoc_STRVAR(_zstd_ZstdDecompressor___init____doc__,
 "ZstdDecompressor(dict=None, option=None)\n"
 "--\n"
@@ -385,6 +402,23 @@ exit:
     }
 
     return return_value;
+}
+
+PyDoc_STRVAR(_zstd_ZstdDecompressor___reduce____doc__,
+"__reduce__($self, /)\n"
+"--\n"
+"\n");
+
+#define _ZSTD_ZSTDDECOMPRESSOR___REDUCE___METHODDEF    \
+    {"__reduce__", (PyCFunction)_zstd_ZstdDecompressor___reduce__, METH_NOARGS, _zstd_ZstdDecompressor___reduce____doc__},
+
+static PyObject *
+_zstd_ZstdDecompressor___reduce___impl(ZstdDecompressor *self);
+
+static PyObject *
+_zstd_ZstdDecompressor___reduce__(ZstdDecompressor *self, PyObject *Py_UNUSED(ignored))
+{
+    return _zstd_ZstdDecompressor___reduce___impl(self);
 }
 
 PyDoc_STRVAR(_zstd__get_cparam_bounds__doc__,
@@ -554,4 +588,4 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=db4e2e407f735d4c input=a9049054013a1b77]*/
+/*[clinic end generated code: output=193c711ab5f7feee input=a9049054013a1b77]*/

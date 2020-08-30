@@ -1178,6 +1178,21 @@ _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
 }
 
 
+/*[clinic input]
+_zstd.ZstdCompressor.__reduce__
+[clinic start generated code]*/
+
+static PyObject *
+_zstd_ZstdCompressor___reduce___impl(ZstdCompressor *self)
+/*[clinic end generated code: output=1042cabbf3957e9c input=d943c46618a56ffe]*/
+{
+    PyErr_Format(PyExc_TypeError,
+                 "cannot pickle %s object",
+                 Py_TYPE(self)->tp_name);
+    return NULL;
+}
+
+
 static int
 _ZstdCompressor_traverse(ZstdCompressor *self, visitproc visit, void *arg)
 {
@@ -1188,6 +1203,7 @@ _ZstdCompressor_traverse(ZstdCompressor *self, visitproc visit, void *arg)
 static PyMethodDef _ZstdCompressor_methods[] = {
     _ZSTD_ZSTDCOMPRESSOR_COMPRESS_METHODDEF
     _ZSTD_ZSTDCOMPRESSOR_FLUSH_METHODDEF
+    _ZSTD_ZSTDCOMPRESSOR___REDUCE___METHODDEF
     {NULL, NULL}
 };
 
@@ -1493,6 +1509,21 @@ success:
     return ret;
 }
 
+
+/*[clinic input]
+_zstd.ZstdDecompressor.__reduce__
+[clinic start generated code]*/
+
+static PyObject *
+_zstd_ZstdDecompressor___reduce___impl(ZstdDecompressor *self)
+/*[clinic end generated code: output=3b2f7c81240639b5 input=9eda5eb42eec2e2b]*/
+{
+    PyErr_Format(PyExc_TypeError,
+                 "cannot pickle %s object",
+                 Py_TYPE(self)->tp_name);
+    return NULL;
+}
+
 static int
 _ZstdDecompressor_traverse(ZstdDecompressor *self, visitproc visit, void *arg)
 {
@@ -1502,6 +1533,7 @@ _ZstdDecompressor_traverse(ZstdDecompressor *self, visitproc visit, void *arg)
 
 static PyMethodDef _ZstdDecompressor_methods[] = {
     _ZSTD_ZSTDDECOMPRESSOR_DECOMPRESS_METHODDEF
+    _ZSTD_ZSTDDECOMPRESSOR___REDUCE___METHODDEF
     {NULL, NULL}
 };
 
