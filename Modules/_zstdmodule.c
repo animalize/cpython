@@ -32,10 +32,17 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
+    /* Compress context */
     ZSTD_CCtx *cctx;
+
+    /* ZstdDict object in use */
     PyObject *dict;
 
+    /* Thread lock for compressing */
     PyThread_type_lock lock;
+
+    /* __init__ has been called */
+    int inited;
 } ZstdCompressor;
 
 typedef struct {
@@ -948,14 +955,17 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     ZstdCompressor *self;
     self = (ZstdCompressor*)type->tp_alloc(type, 0);
 
+    assert(self->dict == NULL);
+    assert(self->inited == 0);
+
+    /* Compress context */
     self->cctx = ZSTD_createCCtx();
     if (self->cctx == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Unable to create ZSTD_CCtx instance.");
         return NULL;
     }
 
-    self->dict = NULL;
-
+    /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
         ZSTD_freeCCtx(self->cctx);
@@ -970,9 +980,13 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static void
 _ZstdCompressor_dealloc(ZstdCompressor *self)
 {
+    /* Compress context */
     ZSTD_freeCCtx(self->cctx);
+
     /* Py_XDECREF the dict after free the compress context */
     Py_XDECREF(self->dict);
+
+    /* Thread lock */
     PyThread_free_lock(self->lock);
 
     PyTypeObject *tp = Py_TYPE(self);
@@ -999,33 +1013,29 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
                                    PyObject *level_or_option, PyObject *dict)
 /*[clinic end generated code: output=3688e3ca73e5d48f input=1a51f5a845ded76f]*/
 {
-    size_t zstd_ret;
     int compress_level = 0; /* 0 means use zstd's default compression level */
-    int ret = 0;
     _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
 
-    ACQUIRE_LOCK(self);
-
-    /* __init__() may be called multiple times, reset options and clear dict. */
-    zstd_ret = ZSTD_CCtx_reset(self->cctx, ZSTD_reset_session_and_parameters);
-    if (ZSTD_isError(zstd_ret)) {
-        PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
-        goto error;
+    /* Only called once */
+    if (self->inited) {
+        PyErr_SetString(PyExc_RuntimeError, 
+                        "ZstdCompressor.__init__ function was called twice.");
+        return -1;
     }
-    Py_CLEAR(self->dict);
+    self->inited = 1;
 
     /* Set compressLevel/options to compress context */
     if (level_or_option != Py_None) {
         if (set_c_parameters(state, self->cctx, level_or_option, &compress_level) < 0) {
-            goto error;
+            return -1;
         }
     }
 
     /* Load dictionary to compress context */
     if (dict != Py_None) {
         if (load_c_dict(state, self->cctx, dict, compress_level) < 0) {
-            goto error;
+            return -1;
         }
 
         /* Py_INCREF the dict */
@@ -1033,13 +1043,7 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
         self->dict = dict;
     }
 
-    goto success;
-
-error:
-    ret = -1;
-success:
-    RELEASE_LOCK(self);
-    return ret;
+    return 0;
 }
 
 static inline PyObject *
