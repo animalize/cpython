@@ -37,18 +37,6 @@ class CompressParameter(IntEnum):
         """Return lower and upper bounds of a parameter, both inclusive."""
         return _zstd._get_cparam_bounds(self.value)
     
-    @classmethod
-    def verify_options(cls, options):
-        """Verify the bounds of options, options is a dict object."""
-        i = 0
-        for k, v in options.items():
-            i += 1
-            lower, upper = _zstd._get_cparam_bounds(k)
-            if not (lower <= v <= upper):
-                msg = (f"The {i}th option's value is {v}, it should"
-                       f" {lower} <= value <= {upper}. ")
-                raise ZstdError(msg)
-
 
 class DecompressParameter(IntEnum):
     windowLogMax = _zstd._ZSTD_d_windowLogMax
@@ -56,18 +44,6 @@ class DecompressParameter(IntEnum):
     def bounds(self):
         """Return lower and upper bounds of a parameter, both inclusive."""
         return _zstd._get_dparam_bounds(self.value)
-
-    @classmethod
-    def verify_options(cls, options):
-        """Verify the bounds of options, options is a dict object."""
-        i = 0
-        for k, v in options.items():
-            i += 1
-            lower, upper = _zstd._get_dparam_bounds(k)
-            if not (lower <= v <= upper):
-                msg = (f"The {i}th option's value is {v}, it should"
-                       f" {lower} <= value <= {upper}. ")
-                raise ZstdError(msg)
 
 
 class Strategy(IntEnum):
