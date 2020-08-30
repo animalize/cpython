@@ -1496,6 +1496,9 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     goto success;
 
 error:
+    /* Reset needs_input */
+    self->needs_input = 1;
+
     /* Clear unconsumed data */
     if (self->input_buffer) {
         PyMem_Free(self->input_buffer);
