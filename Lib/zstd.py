@@ -1,12 +1,50 @@
 
+import enum
 import _compression
-from enum import IntEnum
 
 from _zstd import *
 import _zstd
 
 
-class CompressParameter(IntEnum):
+class EndlessDecompressReader(_compression.DecompressReader):
+    """ Endless decompress reader for zstd, since zstd doesn't have
+        an eof marker, the stream can be endless.
+        End when underlying self._fp ends. """
+    
+    def read(self, size=-1):
+        if size < 0:
+            return self.readall()
+
+        if not size or self._eof:
+            return b""
+
+        # Depending on the input data, our call to the decompressor may not
+        # return any data. In this case, try again after reading another block.
+        data = None
+        while True:
+            if self._decompressor.needs_input:
+                in_dat = self._fp.read(_compression.BUFFER_SIZE)
+                if not in_dat:
+                    break
+            else:
+                in_dat = b""
+
+            data = self._decompressor.decompress(in_dat, size)
+            if data:
+                break
+
+        # self._fp ends
+        if not data:
+            self._eof = True
+            self._size = self._pos  # decompressed size
+            return b""
+
+        # self._pos is current offset in decompressed stream
+        self._pos += len(data)
+        return data
+
+
+class CompressParameter(enum.IntEnum):
     compressionLevel           = _zstd._ZSTD_c_compressionLevel
     windowLog                  = _zstd._ZSTD_c_windowLog
     hashLog                    = _zstd._ZSTD_c_hashLog
@@ -29,7 +67,7 @@ class CompressParameter(IntEnum):
         return _zstd._get_cparam_bounds(self.value)
     
 
-class DecompressParameter(IntEnum):
+class DecompressParameter(enum.IntEnum):
     windowLogMax = _zstd._ZSTD_d_windowLogMax
 
     def bounds(self):
@@ -37,7 +75,7 @@ class DecompressParameter(IntEnum):
         return _zstd._get_dparam_bounds(self.value)
 
 
-class Strategy(IntEnum):
+class Strategy(enum.IntEnum):
     """Compression strategies, listed from fastest to strongest.
 
        Note : new strategies _might_ be added in the future, only the order
@@ -54,7 +92,7 @@ class Strategy(IntEnum):
     btultra2 = _zstd._ZSTD_btultra2
 
 
-class EndDirective(IntEnum):
+class EndDirective(enum.IntEnum):
     """Stream compressor's end directive.
     
     CONTINUE: Collect more data, encoder decides when to output compressed
