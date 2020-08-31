@@ -974,6 +974,10 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     ZstdCompressor *self;
     self = (ZstdCompressor*)type->tp_alloc(type, 0);
+    if (self == NULL) {
+        PyErr_NoMemory();
+        goto error;
+    }
 
     assert(self->dict == NULL);
     assert(self->inited == 0);
@@ -991,26 +995,31 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
-        ZSTD_freeCCtx(self->cctx);
-
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
         return NULL;
     }
-
     return (PyObject*)self;
+
+error:
+    Py_XDECREF(self);
+    return NULL;
 }
 
 static void
 _ZstdCompressor_dealloc(ZstdCompressor *self)
 {
     /* Compress context */
-    ZSTD_freeCCtx(self->cctx);
+    if (self->cctx) {
+        ZSTD_freeCCtx(self->cctx);
+    }
 
     /* Py_XDECREF the dict after free the compress context */
     Py_XDECREF(self->dict);
 
     /* Thread lock */
-    PyThread_free_lock(self->lock);
+    if (self->lock) {
+        PyThread_free_lock(self->lock);
+    }
 
     PyTypeObject *tp = Py_TYPE(self);
     tp->tp_free((PyObject*)self);
