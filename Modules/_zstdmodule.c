@@ -1803,14 +1803,9 @@ zstd_exec(PyObject *module)
     PyObject *temp;
     _zstd_state *state = get_zstd_state(module);
 
-    state->ZstdError = NULL;
-    state->ZstdDict_type = NULL;
-    state->ZstdCompressor_type = NULL;
-    state->ZstdDecompressor_type = NULL;
-
     /* Add zstd parameters */
     if (add_parameters(module) < 0) {
-        goto error;
+        return -1;
     }
 
     /* ZSTD_strategy enum */
@@ -1828,6 +1823,12 @@ zstd_exec(PyObject *module)
     ADD_INT_MACRO(module, ZSTD_e_continue);
     ADD_INT_MACRO(module, ZSTD_e_flush);
     ADD_INT_MACRO(module, ZSTD_e_end);
+
+    /* Set state's objects to NULL */
+    state->ZstdError = NULL;
+    state->ZstdDict_type = NULL;
+    state->ZstdCompressor_type = NULL;
+    state->ZstdDecompressor_type = NULL;
 
     /* ZstdError */
     state->ZstdError = PyErr_NewExceptionWithDoc("_zstd.ZstdError", "Call to zstd failed.", NULL, NULL);
