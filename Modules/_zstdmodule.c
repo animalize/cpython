@@ -1033,7 +1033,7 @@ _zstd.ZstdCompressor.__init__
         level. It can also be a dictionary for setting various advanced
         parameters. The default value None means to use zstd's default
         compression parameters.
-    dict: object = None
+    zstd_dict: object = None
         Pre-trained dictionary for compression, a ZstdDict object.
 
 Initialize ZstdCompressor object.
@@ -1041,8 +1041,9 @@ Initialize ZstdCompressor object.
 
 static int
 _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
-                                   PyObject *level_or_option, PyObject *dict)
-/*[clinic end generated code: output=3688e3ca73e5d48f input=1a51f5a845ded76f]*/
+                                   PyObject *level_or_option,
+                                   PyObject *zstd_dict)
+/*[clinic end generated code: output=65d92fb9ff1519cb input=b2d057ec4fdcd7cd]*/
 {
     int compress_level = 0; /* 0 means use zstd's default compression level */
     _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
@@ -1064,14 +1065,14 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
     }
 
     /* Load dictionary to compress context */
-    if (dict != Py_None) {
-        if (load_c_dict(state, self->cctx, dict, compress_level) < 0) {
+    if (zstd_dict != Py_None) {
+        if (load_c_dict(state, self->cctx, zstd_dict, compress_level) < 0) {
             return -1;
         }
 
         /* Py_INCREF the dict */
-        Py_INCREF(dict);
-        self->dict = dict;
+        Py_INCREF(zstd_dict);
+        self->dict = zstd_dict;
     }
 
     return 0;
@@ -1321,7 +1322,7 @@ _ZstdDecompressor_dealloc(ZstdDecompressor *self)
 /*[clinic input]
 _zstd.ZstdDecompressor.__init__
 
-    dict: object = None
+    zstd_dict: object = None
         Pre-trained dictionary for decompression, a ZstdDict object.
     option: object = None
         A dictionary for setting advanced parameters. The default
@@ -1331,9 +1332,9 @@ Initialize ZstdDecompressor object.
 [clinic start generated code]*/
 
 static int
-_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
-                                     PyObject *option)
-/*[clinic end generated code: output=667351c5096f94cb input=4dc564486c5dc983]*/
+_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
+                                     PyObject *zstd_dict, PyObject *option)
+/*[clinic end generated code: output=182ba99f2278542e input=a045b93d4dce1aa6]*/
 {
     _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
@@ -1354,14 +1355,14 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
     }
 
     /* Load dictionary to decompress context */
-    if (dict != Py_None) {
-        if (load_d_dict(state, self->dctx, dict) < 0) {
+    if (zstd_dict != Py_None) {
+        if (load_d_dict(state, self->dctx, zstd_dict) < 0) {
             return -1;
         }
 
         /* Py_INCREF the dict */
-        Py_INCREF(dict);
-        self->dict = dict;
+        Py_INCREF(zstd_dict);
+        self->dict = zstd_dict;
     }
 
     return 0;

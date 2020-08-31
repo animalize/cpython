@@ -107,7 +107,7 @@ exit:
 }
 
 PyDoc_STRVAR(_zstd_ZstdCompressor___init____doc__,
-"ZstdCompressor(level_or_option=None, dict=None)\n"
+"ZstdCompressor(level_or_option=None, zstd_dict=None)\n"
 "--\n"
 "\n"
 "Initialize ZstdCompressor object.\n"
@@ -117,25 +117,26 @@ PyDoc_STRVAR(_zstd_ZstdCompressor___init____doc__,
 "    level. It can also be a dictionary for setting various advanced\n"
 "    parameters. The default value None means to use zstd\'s default\n"
 "    compression parameters.\n"
-"  dict\n"
+"  zstd_dict\n"
 "    Pre-trained dictionary for compression, a ZstdDict object.");
 
 static int
 _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
-                                   PyObject *level_or_option, PyObject *dict);
+                                   PyObject *level_or_option,
+                                   PyObject *zstd_dict);
 
 static int
 _zstd_ZstdCompressor___init__(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     int return_value = -1;
-    static const char * const _keywords[] = {"level_or_option", "dict", NULL};
+    static const char * const _keywords[] = {"level_or_option", "zstd_dict", NULL};
     static _PyArg_Parser _parser = {NULL, _keywords, "ZstdCompressor", 0};
     PyObject *argsbuf[2];
     PyObject * const *fastargs;
     Py_ssize_t nargs = PyTuple_GET_SIZE(args);
     Py_ssize_t noptargs = nargs + (kwargs ? PyDict_GET_SIZE(kwargs) : 0) - 0;
     PyObject *level_or_option = Py_None;
-    PyObject *dict = Py_None;
+    PyObject *zstd_dict = Py_None;
 
     fastargs = _PyArg_UnpackKeywords(_PyTuple_CAST(args)->ob_item, nargs, kwargs, NULL, &_parser, 0, 2, 0, argsbuf);
     if (!fastargs) {
@@ -150,9 +151,9 @@ _zstd_ZstdCompressor___init__(PyObject *self, PyObject *args, PyObject *kwargs)
             goto skip_optional_pos;
         }
     }
-    dict = fastargs[1];
+    zstd_dict = fastargs[1];
 skip_optional_pos:
-    return_value = _zstd_ZstdCompressor___init___impl((ZstdCompressor *)self, level_or_option, dict);
+    return_value = _zstd_ZstdCompressor___init___impl((ZstdCompressor *)self, level_or_option, zstd_dict);
 
 exit:
     return return_value;
@@ -283,32 +284,32 @@ _zstd_ZstdCompressor___reduce__(ZstdCompressor *self, PyObject *Py_UNUSED(ignore
 }
 
 PyDoc_STRVAR(_zstd_ZstdDecompressor___init____doc__,
-"ZstdDecompressor(dict=None, option=None)\n"
+"ZstdDecompressor(zstd_dict=None, option=None)\n"
 "--\n"
 "\n"
 "Initialize ZstdDecompressor object.\n"
 "\n"
-"  dict\n"
+"  zstd_dict\n"
 "    Pre-trained dictionary for decompression, a ZstdDict object.\n"
 "  option\n"
 "    A dictionary for setting advanced parameters. The default\n"
 "    value None means to use zstd\'s default decompression parameters.");
 
 static int
-_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self, PyObject *dict,
-                                     PyObject *option);
+_zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
+                                     PyObject *zstd_dict, PyObject *option);
 
 static int
 _zstd_ZstdDecompressor___init__(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     int return_value = -1;
-    static const char * const _keywords[] = {"dict", "option", NULL};
+    static const char * const _keywords[] = {"zstd_dict", "option", NULL};
     static _PyArg_Parser _parser = {NULL, _keywords, "ZstdDecompressor", 0};
     PyObject *argsbuf[2];
     PyObject * const *fastargs;
     Py_ssize_t nargs = PyTuple_GET_SIZE(args);
     Py_ssize_t noptargs = nargs + (kwargs ? PyDict_GET_SIZE(kwargs) : 0) - 0;
-    PyObject *dict = Py_None;
+    PyObject *zstd_dict = Py_None;
     PyObject *option = Py_None;
 
     fastargs = _PyArg_UnpackKeywords(_PyTuple_CAST(args)->ob_item, nargs, kwargs, NULL, &_parser, 0, 2, 0, argsbuf);
@@ -319,14 +320,14 @@ _zstd_ZstdDecompressor___init__(PyObject *self, PyObject *args, PyObject *kwargs
         goto skip_optional_pos;
     }
     if (fastargs[0]) {
-        dict = fastargs[0];
+        zstd_dict = fastargs[0];
         if (!--noptargs) {
             goto skip_optional_pos;
         }
     }
     option = fastargs[1];
 skip_optional_pos:
-    return_value = _zstd_ZstdDecompressor___init___impl((ZstdDecompressor *)self, dict, option);
+    return_value = _zstd_ZstdDecompressor___init___impl((ZstdDecompressor *)self, zstd_dict, option);
 
 exit:
     return return_value;
@@ -588,4 +589,4 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=193c711ab5f7feee input=a9049054013a1b77]*/
+/*[clinic end generated code: output=2d2d246f747eb6f2 input=a9049054013a1b77]*/
