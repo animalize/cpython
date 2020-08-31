@@ -2,6 +2,7 @@
 import builtins
 import enum
 import io
+import os
 import _compression
 
 from _zstd import *
@@ -58,9 +59,9 @@ class ZstdFile(_compression.BaseStream):
         self._mode = _MODE_CLOSED
 
         if mode in ("r", "rb"):
-            if not isinstance(level_or_option, dict):
+            if not isinstance(level_or_option, (type(None), dict)):
                 raise ValueError("level_or_option should be dict object.")
-            if not isinstance(zdict, ZstdDict):
+            if not isinstance(zdict, (type(None), ZstdDict)):
                 raise ValueError("zdict should be ZstdDict object.")
             mode_code = _MODE_READ
         elif mode in ("w", "wb", "a", "ab", "x", "xb"):
@@ -83,8 +84,8 @@ class ZstdFile(_compression.BaseStream):
             raise TypeError("filename must be a str, bytes, file or PathLike object")
 
         if self._mode == _MODE_READ:
-            raw = _compression.DecompressReader(self._fp, ZstdDecompressor,
-                trailing_error=ZstdError, dict=zdict, option=option)
+            raw = EndlessDecompressReader(self._fp, ZstdDecompressor,
+                trailing_error=ZstdError, dict=zdict, option=level_or_option)
             self._buffer = io.BufferedReader(raw)
 
     def close(self):
@@ -214,6 +215,22 @@ class ZstdFile(_compression.BaseStream):
         if self._mode == _MODE_READ:
             return self._buffer.tell()
         return self._pos
+
+
+def open(filename, mode="rb", *, level_or_option=None, zdict=None,
+         encoding=None, errors=None, newline=None):
+    if "t" in mode:
+        if "b" in mode:
+            raise ValueError("Invalid mode: %r" % (mode,))
+
+    zstd_mode = mode.replace("t", "")
+    binary_file = ZstdFile(filename, zstd_mode,
+                           level_or_option=level_or_option, zdict=zdict)
+
+    if "t" in mode:
+        return io.TextIOWrapper(binary_file, encoding, errors, newline)
+    else:
+        return binary_file
 
 
 class CompressParameter(enum.IntEnum):
