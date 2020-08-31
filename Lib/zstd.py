@@ -54,6 +54,7 @@ class EndlessDecompressReader(_compression.DecompressReader):
         self._pos += len(data)
         return data
 
+
 _MODE_CLOSED   = 0
 _MODE_READ     = 1
 _MODE_WRITE    = 2
@@ -355,4 +356,3 @@ def train_dict(iterable_of_chunks, dict_size=100*1024):
     dict_content = _zstd._train_dict(chunks, chunk_sizes, dict_size)
 
     return ZstdDict(dict_content)
-
