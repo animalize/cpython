@@ -350,7 +350,7 @@ static const ParameterInfo dp_list[] =
 };
 
 
-/* Format an user friendly error mssage. */
+/* Format an user friendly error message. */
 static inline void
 get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
                         int key_v, int value_v, char is_compress)
