@@ -1431,16 +1431,19 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         in.src = data->buf;
         in.size = data->len;
     } else {
-        temp = PyMem_Realloc(self->input_buffer,
-                             self->input_buffer_size + data->len);
-        if (temp == NULL) {
-            PyErr_NoMemory();
-            goto error;
-        }
-        memcpy(temp + self->input_buffer_size, data->buf, data->len);
+        /* data is not b'' */
+        if (data->len > 0) {
+            temp = PyMem_Realloc(self->input_buffer,
+                                 self->input_buffer_size + data->len);
+            if (temp == NULL) {
+                PyErr_NoMemory();
+                goto error;
+            }
+            memcpy(temp + self->input_buffer_size, data->buf, data->len);
 
-        self->input_buffer = temp;
-        self->input_buffer_size += data->len;
+            self->input_buffer = temp;
+            self->input_buffer_size += data->len;
+        }
 
         in.src = self->input_buffer;
         in.size = self->input_buffer_size;
@@ -1483,8 +1486,9 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         if (self->input_buffer) {
             PyMem_Free(self->input_buffer);
             self->input_buffer = NULL;
+
+            self->input_buffer_size = 0;
         }
-        self->input_buffer_size = 0;
     }
 
     goto success;
