@@ -58,13 +58,16 @@ class ZstdFile(_compression.BaseStream):
         self._closefp = False
         self._mode = _MODE_CLOSED
 
+        if not isinstance(zstd_dict, (type(None), ZstdDict)):
+            raise ValueError("zstd_dict should be ZstdDict object.")
+
         if mode in ("r", "rb"):
             if not isinstance(level_or_option, (type(None), dict)):
                 raise ValueError("level_or_option should be dict object.")
-            if not isinstance(zstd_dict, (type(None), ZstdDict)):
-                raise ValueError("zstd_dict should be ZstdDict object.")
             mode_code = _MODE_READ
         elif mode in ("w", "wb", "a", "ab", "x", "xb"):
+            if not isinstance(level_or_option, (type(None), int, dict)):
+                raise ValueError("level_or_option should be int or dict object.")
             mode_code = _MODE_WRITE
             self._compressor = ZstdCompressor(level_or_option, zstd_dict)
             self._pos = 0
