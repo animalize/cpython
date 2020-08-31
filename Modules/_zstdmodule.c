@@ -543,6 +543,10 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     ZstdDict *self;
     self = (ZstdDict*)type->tp_alloc(type, 0);
+    if (self == NULL) {
+        PyErr_NoMemory();
+        goto error;
+    }
 
     assert(self->dict_content == NULL);
     assert(self->dict_id == 0);
@@ -552,34 +556,41 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     /* ZSTD_CDict dict */
     self->c_dicts = PyDict_New();
     if (self->c_dicts == NULL) {
-        return NULL;
+        PyErr_NoMemory();
+        goto error;
     }
 
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
-        Py_DECREF(self->c_dicts);
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
-        return NULL;
+        goto error;
     }
-
     return (PyObject*)self;
+
+error:
+    Py_XDECREF(self);
+    return NULL;
 }
 
 static void
 _ZstdDict_dealloc(ZstdDict *self)
 {
-    /* Free ZSTD_CDict/ZSTD_DDict instances */
-    Py_DECREF(self->c_dicts);
+    /* Free ZSTD_CDict instances */
+    Py_XDECREF(self->c_dicts);
+
+    /* Free ZSTD_DDict instance */
     if (self->d_dict) {
         ZSTD_freeDDict(self->d_dict);
     }
 
     /* Release dict_content after Free ZSTD_CDict/ZSTD_DDict instances */
-    Py_DECREF(self->dict_content);
+    Py_XDECREF(self->dict_content);
 
     /* Free thread lock */
-    PyThread_free_lock(self->lock);
+    if (self->lock) {
+        PyThread_free_lock(self->lock);
+    }
 
     PyTypeObject *tp = Py_TYPE(self);
     tp->tp_free((PyObject*)self);
