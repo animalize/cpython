@@ -237,22 +237,22 @@ def open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
 
 
 class CompressParameter(enum.IntEnum):
-    compressionLevel           = _zstd._ZSTD_c_compressionLevel
-    windowLog                  = _zstd._ZSTD_c_windowLog
-    hashLog                    = _zstd._ZSTD_c_hashLog
-    chainLog                   = _zstd._ZSTD_c_chainLog
-    searchLog                  = _zstd._ZSTD_c_searchLog
-    minMatch                   = _zstd._ZSTD_c_minMatch
-    targetLength               = _zstd._ZSTD_c_targetLength
-    strategy                   = _zstd._ZSTD_c_strategy
-    enableLongDistanceMatching = _zstd._ZSTD_c_enableLongDistanceMatching
-    ldmHashLog                 = _zstd._ZSTD_c_ldmHashLog
-    ldmMinMatch                = _zstd._ZSTD_c_ldmMinMatch
-    ldmBucketSizeLog           = _zstd._ZSTD_c_ldmBucketSizeLog
-    ldmHashRateLog             = _zstd._ZSTD_c_ldmHashRateLog
-    contentSizeFlag            = _zstd._ZSTD_c_contentSizeFlag
-    checksumFlag               = _zstd._ZSTD_c_checksumFlag
-    dictIDFlag                 = _zstd._ZSTD_c_dictIDFlag
+    compressionLevel           = ZSTD_c_compressionLevel
+    windowLog                  = ZSTD_c_windowLog
+    hashLog                    = ZSTD_c_hashLog
+    chainLog                   = ZSTD_c_chainLog
+    searchLog                  = ZSTD_c_searchLog
+    minMatch                   = ZSTD_c_minMatch
+    targetLength               = ZSTD_c_targetLength
+    strategy                   = ZSTD_c_strategy
+    enableLongDistanceMatching = ZSTD_c_enableLongDistanceMatching
+    ldmHashLog                 = ZSTD_c_ldmHashLog
+    ldmMinMatch                = ZSTD_c_ldmMinMatch
+    ldmBucketSizeLog           = ZSTD_c_ldmBucketSizeLog
+    ldmHashRateLog             = ZSTD_c_ldmHashRateLog
+    contentSizeFlag            = ZSTD_c_contentSizeFlag
+    checksumFlag               = ZSTD_c_checksumFlag
+    dictIDFlag                 = ZSTD_c_dictIDFlag
 
     def bounds(self):
         """Return lower and upper bounds of a parameter, both inclusive."""
@@ -260,7 +260,7 @@ class CompressParameter(enum.IntEnum):
     
 
 class DecompressParameter(enum.IntEnum):
-    windowLogMax = _zstd._ZSTD_d_windowLogMax
+    windowLogMax = ZSTD_d_windowLogMax
 
     def bounds(self):
         """Return lower and upper bounds of a parameter, both inclusive."""
@@ -273,15 +273,15 @@ class Strategy(enum.IntEnum):
        Note : new strategies _might_ be added in the future, only the order
        (from fast to strong) is guaranteed.
     """
-    fast     = _zstd._ZSTD_fast
-    dfast    = _zstd._ZSTD_dfast
-    greedy   = _zstd._ZSTD_greedy
-    lazy     = _zstd._ZSTD_lazy
-    lazy2    = _zstd._ZSTD_lazy2
-    btlazy2  = _zstd._ZSTD_btlazy2
-    btopt    = _zstd._ZSTD_btopt
-    btultra  = _zstd._ZSTD_btultra
-    btultra2 = _zstd._ZSTD_btultra2
+    fast     = ZSTD_fast
+    dfast    = ZSTD_dfast
+    greedy   = ZSTD_greedy
+    lazy     = ZSTD_lazy
+    lazy2    = ZSTD_lazy2
+    btlazy2  = ZSTD_btlazy2
+    btopt    = ZSTD_btopt
+    btultra  = ZSTD_btultra
+    btultra2 = ZSTD_btultra2
 
 
 class EndDirective(enum.IntEnum):
@@ -294,9 +294,9 @@ class EndDirective(enum.IntEnum):
               used for communication, the receiver can decode immediately.
     END:      Flush any remaining data _and_ close current frame.
     """
-    CONTINUE = _zstd._ZSTD_e_continue
-    FLUSH    = _zstd._ZSTD_e_flush
-    END      = _zstd._ZSTD_e_end
+    CONTINUE = ZSTD_e_continue
+    FLUSH    = ZSTD_e_flush
+    END      = ZSTD_e_end
 
 
 def compress(data, level_or_option=None, zstd_dict=None):
@@ -308,7 +308,7 @@ def compress(data, level_or_option=None, zstd_dict=None):
     For incremental compression, use an ZstdCompressor instead.
     """
     comp = ZstdCompressor(level_or_option, zstd_dict)
-    return comp.compress(data, _zstd._ZSTD_e_end)
+    return comp.compress(data, ZSTD_e_end)
 
 
 def decompress(data, zstd_dict=None, option=None):
