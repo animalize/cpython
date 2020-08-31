@@ -79,9 +79,6 @@ class _zstd.ZstdDecompressor "ZstdDecompressor *" "&ZstdDecompressor_type"
 /* -----------------------------------
      BlocksOutputBuffer code 
    ----------------------------------- */
-#define BLOCK_OUTPUT_BUFFER_CODE_BLOCK
-#ifdef BLOCK_OUTPUT_BUFFER_CODE_BLOCK
-/* _BlocksOutputBuffer code */
 typedef struct {
     /* List of blocks */
     PyObject *list;
@@ -90,7 +87,7 @@ typedef struct {
 
     /* Max length of the buffer, negative number for unlimited length. */
     Py_ssize_t max_length;
-} _BlocksOutputBuffer;
+} BlocksOutputBuffer;
 
 
 /* Block size sequence. Some compressor/decompressor can't process large
@@ -139,13 +136,13 @@ static const int BUFFER_BLOCK_SIZE[] =
    Return -1 on failure
 */
 static int
-_BlocksOutputBuffer_InitAndGrow(_BlocksOutputBuffer *buffer, Py_ssize_t max_length,
+OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
                                 ZSTD_outBuffer *ob)
 {
     PyObject *b;
     int block_size;
 
-    // Set & check max_length
+    /* Set & check max_length */
     buffer->max_length = max_length;
     if (max_length >= 0 && BUFFER_BLOCK_SIZE[0] > max_length) {
         block_size = (int) max_length;
@@ -153,14 +150,14 @@ _BlocksOutputBuffer_InitAndGrow(_BlocksOutputBuffer *buffer, Py_ssize_t max_leng
         block_size = BUFFER_BLOCK_SIZE[0];
     }
 
-    // The first block
+    /* The first block */
     b = PyBytes_FromStringAndSize(NULL, block_size);
     if (b == NULL) {
         buffer->list = NULL; // For _BlocksOutputBuffer_OnError()
         return -1;
     }
 
-    // Create list
+    /* Create list */
     buffer->list = PyList_New(1);
     if (buffer->list == NULL) {
         Py_DECREF(b);
@@ -168,7 +165,7 @@ _BlocksOutputBuffer_InitAndGrow(_BlocksOutputBuffer *buffer, Py_ssize_t max_leng
     }
     PyList_SET_ITEM(buffer->list, 0, b);
 
-    // Set variables
+    /* Set variables */
     buffer->allocated = block_size;
 
     ob->dst = PyBytes_AS_STRING(b);
@@ -183,36 +180,36 @@ _BlocksOutputBuffer_InitAndGrow(_BlocksOutputBuffer *buffer, Py_ssize_t max_leng
    Return -1 on failure
 */
 static int
-_BlocksOutputBuffer_Grow(_BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
+OutputBuffer_Grow(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
 {
     PyObject *b;
     const Py_ssize_t list_len = Py_SIZE(buffer->list);
     int block_size;
 
-    // Ensure no gaps in the data
+    /* Ensure no gaps in the data */
     assert(ob->pos == ob->size);
 
-    // Get block size
+    /* Get block size */
     if (list_len < Py_ARRAY_LENGTH(BUFFER_BLOCK_SIZE)) {
         block_size = BUFFER_BLOCK_SIZE[list_len];
     } else {
         block_size = BUFFER_BLOCK_SIZE[Py_ARRAY_LENGTH(BUFFER_BLOCK_SIZE) - 1];
     }
 
-    // Check max_length
+    /* Check max_length */
     if (buffer->max_length >= 0) {
-        // Prevent adding unlimited number of empty bytes to the list.
+        /* Prevent adding unlimited number of empty bytes to the list */
         if (buffer->max_length == 0) {
             assert(ob->pos == ob->size);
             return 0;
         }
-        // block_size of the last block
+        /* block_size of the last block */
         if (block_size > buffer->max_length - buffer->allocated) {
             block_size = (int) (buffer->max_length - buffer->allocated);
         }
     }
 
-    // Create the block
+    /* Create the block */
     b = PyBytes_FromStringAndSize(NULL, block_size);
     if (b == NULL) {
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate output buffer.");
@@ -224,7 +221,7 @@ _BlocksOutputBuffer_Grow(_BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
     }
     Py_DECREF(b);
 
-    // Set variables
+    /* Set variables */
     buffer->allocated += block_size;
 
     ob->dst = PyBytes_AS_STRING(b);
@@ -236,7 +233,7 @@ _BlocksOutputBuffer_Grow(_BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
 
 /* Return the current outputted data size. */
 static inline Py_ssize_t
-_BlocksOutputBuffer_GetDataSize(_BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
+OutputBuffer_GetDataSize(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
 {
     return buffer->allocated - (ob->size - ob->pos);
 }
@@ -247,30 +244,30 @@ _BlocksOutputBuffer_GetDataSize(_BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
    Return NULL on failure
 */
 static PyObject *
-_BlocksOutputBuffer_Finish(_BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
+OutputBuffer_Finish(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
 {
     PyObject *result, *block;
     int8_t *offset;
 
-    // Final bytes object
+    /* Final bytes object */
     result = PyBytes_FromStringAndSize(NULL, buffer->allocated - (ob->size - ob->pos));
     if (result == NULL) {
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate output buffer.");
         return NULL;
     }
 
-    // Memory copy
+    /* Memory copy */
     if (Py_SIZE(buffer->list) > 0) {
         offset = PyBytes_AS_STRING(result);
 
-        // blocks except the last one
+        /* Blocks except the last one */
         Py_ssize_t i = 0;
         for (; i < Py_SIZE(buffer->list)-1; i++) {
             block = PyList_GET_ITEM(buffer->list, i);
             memcpy(offset,  PyBytes_AS_STRING(block), Py_SIZE(block));
             offset += Py_SIZE(block);
         }
-        // the last block
+        /* The last block */
         block = PyList_GET_ITEM(buffer->list, i);
         memcpy(offset, PyBytes_AS_STRING(block), Py_SIZE(block) - (ob->size - ob->pos));
     } else {
@@ -284,14 +281,11 @@ _BlocksOutputBuffer_Finish(_BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
 
 /* clean up the buffer. */
 static inline void
-_BlocksOutputBuffer_OnError(_BlocksOutputBuffer *buffer)
+OutputBuffer_OnError(BlocksOutputBuffer *buffer)
 {
     Py_XDECREF(buffer->list);
 }
 
-#define OutputBuffer(F) _BlocksOutputBuffer_##F
-#endif
-#undef BLOCK_OUTPUT_BUFFER_CODE_BLOCK /* _BlocksOutputBuffer code end */
 
 typedef struct {
     PyTypeObject *ZstdDict_type;
@@ -1060,7 +1054,7 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
 {
     ZSTD_inBuffer in;
     ZSTD_outBuffer out;
-    _BlocksOutputBuffer buffer;
+    BlocksOutputBuffer buffer;
     size_t zstd_ret;
     PyObject *ret;
     _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
@@ -1079,7 +1073,7 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
 
     /* OutputBuffer(OnError)(&buffer) is after `error` label,
        so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, -1, &out) < 0) {
+    if (OutputBuffer_InitAndGrow(&buffer, -1, &out) < 0) {
         goto error;
     }
 
@@ -1097,7 +1091,7 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
 
         /* Finished */
         if (zstd_ret == 0) {
-            ret = OutputBuffer(Finish)(&buffer, &out);
+            ret = OutputBuffer_Finish(&buffer, &out);
             if (ret != NULL) {
                 goto success;
             } else {
@@ -1107,7 +1101,7 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
 
         /* Output buffer exhausted, grow the buffer */
         if (out.pos == out.size) {
-            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
+            if (OutputBuffer_Grow(&buffer, &out) < 0) {
                 goto error;
             }
         }
@@ -1116,7 +1110,7 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
     }
 
 error:
-    OutputBuffer(OnError)(&buffer);
+    OutputBuffer_OnError(&buffer);
     ret = NULL;
 success:
     return ret;
@@ -1340,14 +1334,14 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
 {
     size_t zstd_ret;
     ZSTD_outBuffer out;
-    _BlocksOutputBuffer buffer;
+    BlocksOutputBuffer buffer;
     PyObject *ret;
     _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
     assert(state != NULL);
 
     /* OutputBuffer(OnError)(&buffer) is after `error` label,
        so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer(InitAndGrow)(&buffer, max_length, &out) < 0) {
+    if (OutputBuffer_InitAndGrow(&buffer, max_length, &out) < 0) {
         goto error;
     }
 
@@ -1368,8 +1362,8 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
            if max_lengh < 0. */
         if (out.pos == out.size) {
             /* Output buffer reached max_length */
-            if (OutputBuffer(GetDataSize)(&buffer, &out) == max_length) {
-                ret = OutputBuffer(Finish)(&buffer, &out);
+            if (OutputBuffer_GetDataSize(&buffer, &out) == max_length) {
+                ret = OutputBuffer_Finish(&buffer, &out);
                 if (ret != NULL) {
                     goto success;
                 } else {
@@ -1378,12 +1372,12 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
             }
 
             /* Grow output buffer */
-            if (OutputBuffer(Grow)(&buffer, &out) < 0) {
+            if (OutputBuffer_Grow(&buffer, &out) < 0) {
                 goto error;
             }
         } else if (in->pos == in->size) {
             /* Finished */
-            ret = OutputBuffer(Finish)(&buffer, &out);
+            ret = OutputBuffer_Finish(&buffer, &out);
             if (ret != NULL) {
                 goto success;
             } else {
@@ -1393,7 +1387,7 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
     }
 
 error:
-    OutputBuffer(OnError)(&buffer);
+    OutputBuffer_OnError(&buffer);
     ret = NULL;
 success:
     return ret;
