@@ -989,14 +989,14 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->cctx = ZSTD_createCCtx();
     if (self->cctx == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Unable to create ZSTD_CCtx instance.");
-        return NULL;
+        goto error;
     }
 
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
-        return NULL;
+        goto error;
     }
     return (PyObject*)self;
 
@@ -1284,6 +1284,10 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     ZstdDecompressor *self;
     self = (ZstdDecompressor*)type->tp_alloc(type, 0);
+    if (self == NULL) {
+        PyErr_NoMemory();
+        goto error;
+    }
 
     assert(self->dict == NULL);
     assert(self->frame_not_finished == 0);
@@ -1298,26 +1302,29 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->dctx = ZSTD_createDCtx();
     if (self->dctx == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Unable to create ZSTD_DCtx instance.");
-        return NULL;
+        goto error;
     }
 
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
-        ZSTD_freeDCtx(self->dctx);
-
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
-        return NULL;
+        goto error;
     }
-
     return (PyObject*)self;
+
+error:
+    Py_XDECREF(self);
+    return NULL;
 }
 
 static void
 _ZstdDecompressor_dealloc(ZstdDecompressor *self)
 {
     /* Free decompress context */
-    ZSTD_freeDCtx(self->dctx);
+    if (self->dctx) {
+        ZSTD_freeDCtx(self->dctx);
+    }
 
     /* Free Unconsumed input data buffer */
     if (self->input_buffer != NULL) {
@@ -1328,7 +1335,9 @@ _ZstdDecompressor_dealloc(ZstdDecompressor *self)
     Py_XDECREF(self->dict);
 
     /* Free thread lock */
-    PyThread_free_lock(self->lock);
+    if (self->lock) {
+        PyThread_free_lock(self->lock);
+    }
 
     PyTypeObject *tp = Py_TYPE(self);
     tp->tp_free((PyObject*)self);
