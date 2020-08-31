@@ -53,7 +53,7 @@ _MODE_WRITE    = 2
 class ZstdFile(_compression.BaseStream):
 
     def __init__(self, filename=None, mode="r", *,
-                 level_or_option=None, zdict=None):
+                 level_or_option=None, zstd_dict=None):
         self._fp = None
         self._closefp = False
         self._mode = _MODE_CLOSED
@@ -61,12 +61,12 @@ class ZstdFile(_compression.BaseStream):
         if mode in ("r", "rb"):
             if not isinstance(level_or_option, (type(None), dict)):
                 raise ValueError("level_or_option should be dict object.")
-            if not isinstance(zdict, (type(None), ZstdDict)):
-                raise ValueError("zdict should be ZstdDict object.")
+            if not isinstance(zstd_dict, (type(None), ZstdDict)):
+                raise ValueError("zstd_dict should be ZstdDict object.")
             mode_code = _MODE_READ
         elif mode in ("w", "wb", "a", "ab", "x", "xb"):
             mode_code = _MODE_WRITE
-            self._compressor = ZstdCompressor(level_or_option, zdict)
+            self._compressor = ZstdCompressor(level_or_option, zstd_dict)
             self._pos = 0
         else:
             raise ValueError("Invalid mode: {!r}".format(mode))
@@ -85,7 +85,7 @@ class ZstdFile(_compression.BaseStream):
 
         if self._mode == _MODE_READ:
             raw = EndlessDecompressReader(self._fp, ZstdDecompressor,
-                trailing_error=ZstdError, dict=zdict, option=level_or_option)
+                trailing_error=ZstdError, zstd_dict=zstd_dict, option=level_or_option)
             self._buffer = io.BufferedReader(raw)
 
     def close(self):
@@ -217,7 +217,7 @@ class ZstdFile(_compression.BaseStream):
         return self._pos
 
 
-def open(filename, mode="rb", *, level_or_option=None, zdict=None,
+def open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
          encoding=None, errors=None, newline=None):
     if "t" in mode:
         if "b" in mode:
@@ -225,7 +225,7 @@ def open(filename, mode="rb", *, level_or_option=None, zdict=None,
 
     zstd_mode = mode.replace("t", "")
     binary_file = ZstdFile(filename, zstd_mode,
-                           level_or_option=level_or_option, zdict=zdict)
+                           level_or_option=level_or_option, zstd_dict=zstd_dict)
 
     if "t" in mode:
         return io.TextIOWrapper(binary_file, encoding, errors, newline)
@@ -296,27 +296,27 @@ class EndDirective(enum.IntEnum):
     END      = _zstd._ZSTD_e_end
 
 
-def compress(data, level_or_option=None, dict=None):
+def compress(data, level_or_option=None, zstd_dict=None):
     """Compress a block of data.
 
     Refer to ZstdCompressor's docstring for a description of the
-    optional arguments *level_or_option* and *dict*.
+    optional arguments *level_or_option* and *zstd_dict*.
 
     For incremental compression, use an ZstdCompressor instead.
     """
-    comp = ZstdCompressor(level_or_option, dict)
+    comp = ZstdCompressor(level_or_option, zstd_dict)
     return comp.compress(data, _zstd._ZSTD_e_end)
 
 
-def decompress(data, dict=None, option=None):
+def decompress(data, zstd_dict=None, option=None):
     """Decompress a block of data.
 
     Refer to ZstdDecompressor's docstring for a description of the
-    optional arguments *dict* and *option*.
+    optional arguments *zstd_dict* and *option*.
 
     For incremental decompression, use an ZstdDecompressor instead.
     """
-    decomp = ZstdDecompressor(dict, option)
+    decomp = ZstdDecompressor(zstd_dict, option)
     return decomp.decompress(data, -1)
 
 
