@@ -8,6 +8,13 @@ import _compression
 from _zstd import *
 import _zstd
 
+__all__ = ('compress', 'decompress', 'train_dict',
+           'ZstdCompressor', 'ZstdDecompressor', 'ZstdDict', 'ZstdError',
+           'ZstdFile', 'open',
+           'CompressParameter', 'DecompressParameter',
+           'Strategy', 'EndDirective',
+           'get_frame_info', 'get_frame_size',
+           'zstd_version', 'zstd_version_info', 'compress_level_bounds')
 
 class EndlessDecompressReader(_compression.DecompressReader):
     """ Endless decompress reader for zstd, since zstd doesn't have
@@ -222,9 +229,8 @@ class ZstdFile(_compression.BaseStream):
 
 def open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
          encoding=None, errors=None, newline=None):
-    if "t" in mode:
-        if "b" in mode:
-            raise ValueError("Invalid mode: %r" % (mode,))
+    if "t" in mode and "b" in mode:
+        raise ValueError("Invalid mode: %r" % (mode,))
 
     zstd_mode = mode.replace("t", "")
     binary_file = ZstdFile(filename, zstd_mode,
