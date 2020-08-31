@@ -656,7 +656,7 @@ _ZstdDict_traverse(ZstdDict *self, visitproc visit, void *arg)
 }
 
 static PyObject *
-_ZstdDict_repr(ZstdDict *dict)
+_ZstdDict_str(ZstdDict *dict)
 {
     char buf[64];
     PyOS_snprintf(buf, sizeof(buf),
@@ -678,7 +678,7 @@ static PyType_Slot zstddict_slots[] = {
     {Py_tp_new, _ZstdDict_new},
     {Py_tp_dealloc, _ZstdDict_dealloc},
     {Py_tp_init, _zstd_ZstdDict___init__},
-    {Py_tp_repr, _ZstdDict_repr},
+    {Py_tp_str, _ZstdDict_str},
     {Py_tp_doc, (char*)_ZstdDict_dict_doc},
     {Py_tp_traverse, _ZstdDict_traverse},
     {0, 0}
