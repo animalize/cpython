@@ -38,9 +38,6 @@ typedef struct {
     /* ZstdDict object in use */
     PyObject *dict;
 
-    /* Last ZSTD_EndDirective, will be initialized as ZSTD_e_end */
-    ZSTD_EndDirective last_end_directive;
-
     /* Thread lock for compressing */
     PyThread_type_lock lock;
 
@@ -987,9 +984,6 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     assert(self->dict == NULL);
     assert(self->inited == 0);
 
-    /* Last end directive */
-    self->last_end_directive = ZSTD_e_end;
-
     /* Compress context */
     self->cctx = ZSTD_createCCtx();
     if (self->cctx == NULL) {
@@ -1173,20 +1167,7 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
     PyObject *ret;
 
     ACQUIRE_LOCK(self);
-    if (data->len == 0 &&
-        end_directive == ZSTD_e_end &&
-        self->last_end_directive == ZSTD_e_end) {
-        /* Don't emit an empty content frame (13 bytes) */
-        ret = PyBytes_FromStringAndSize(NULL, 0);
-    } else {
-        /* Compress */
-        ret = compress_impl(self, data, end_directive);
-
-        /* Remember end_directive */
-        if (ret != NULL) {
-            self->last_end_directive = end_directive;
-        }
-    }
+    ret = compress_impl(self, data, end_directive);
     RELEASE_LOCK(self);
 
     return ret;
@@ -1211,21 +1192,9 @@ _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
 /*[clinic end generated code: output=0206a53c394f4620 input=9f5cfc3560d831ac]*/
 {
     PyObject *ret;
-    const ZSTD_EndDirective end_dir = end_frame ? ZSTD_e_end : ZSTD_e_flush;
 
     ACQUIRE_LOCK(self);
-    if (self->last_end_directive == ZSTD_e_end) {
-        /* Don't emit an empty content frame (13 bytes) */
-        ret = PyBytes_FromStringAndSize(NULL, 0);
-    } else {
-        /* Flush */
-        ret = compress_impl(self, NULL, end_dir);
-
-        /* Remember end_directive */
-        if (ret != NULL) {
-            self->last_end_directive = end_dir;
-        }
-    }
+    ret = compress_impl(self, NULL, end_frame ? ZSTD_e_end : ZSTD_e_flush);
     RELEASE_LOCK(self);
 
     return ret;
