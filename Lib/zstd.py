@@ -1,4 +1,12 @@
 
+__all__ = ('compress', 'decompress', 'train_dict',
+           'ZstdCompressor', 'ZstdDecompressor', 'ZstdDict', 'ZstdError',
+           'ZstdFile', 'open',
+           'CompressParameter', 'DecompressParameter',
+           'Strategy', 'EndDirective',
+           'get_frame_info', 'get_frame_size',
+           'zstd_version', 'zstd_version_info', 'compress_level_bounds')
+
 import builtins
 import enum
 import io
@@ -8,13 +16,6 @@ import _compression
 from _zstd import *
 import _zstd
 
-__all__ = ('compress', 'decompress', 'train_dict',
-           'ZstdCompressor', 'ZstdDecompressor', 'ZstdDict', 'ZstdError',
-           'ZstdFile', 'open',
-           'CompressParameter', 'DecompressParameter',
-           'Strategy', 'EndDirective',
-           'get_frame_info', 'get_frame_size',
-           'zstd_version', 'zstd_version_info', 'compress_level_bounds')
 
 class EndlessDecompressReader(_compression.DecompressReader):
     """ Endless decompress reader for zstd, since zstd doesn't have
@@ -326,7 +327,7 @@ def decompress(data, zstd_dict=None, option=None):
     For incremental decompression, use an ZstdDecompressor instead.
     """
     decomp = ZstdDecompressor(zstd_dict, option)
-    return decomp.decompress(data, -1)
+    return decomp.decompress(data)
 
 
 def train_dict(iterable_of_chunks, dict_size=100*1024):
