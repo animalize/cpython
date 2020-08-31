@@ -1496,8 +1496,26 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         goto error;
     }
 
-    if (in.pos < in.size) {
+    if (in.pos == in.size) {
+        /* Both input and output buffer exhausted, try to output
+           internal buffer's data next time. */
+        if (Py_SIZE(ret) == max_length) {
+            self->needs_input = 0;
+        } else {
+            self->needs_input = 1;
+        }
+
+        /* Clear input_buffer */
+        if (self->input_buffer) {
+            PyMem_Free(self->input_buffer);
+            self->input_buffer = NULL;
+
+            self->input_buffer_size = 0;
+        }
+    } else {
         /* Has unconsumed data */
+        assert(in.pos < in.size);
+
         self->needs_input = 0;
 
         size_t const buffer_size = in.size - in.pos;
@@ -1514,22 +1532,6 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 
         self->input_buffer = temp;
         self->input_buffer_size = buffer_size;
-    } else if (in.pos == in.size) {
-        /* Both input and output buffer exhausted, try to output
-           internal buffer's data next time. */
-        if (Py_SIZE(ret) == max_length) {
-            self->needs_input = 0;
-        } else {
-            self->needs_input = 1;
-        }
-
-        /* Clear input_buffer */
-        if (self->input_buffer) {
-            PyMem_Free(self->input_buffer);
-            self->input_buffer = NULL;
-
-            self->input_buffer_size = 0;
-        }
     }
 
     goto success;
