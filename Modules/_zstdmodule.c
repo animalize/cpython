@@ -486,12 +486,15 @@ _get_CDict(ZstdDict *self, int compressionLevel)
         goto error;
     }
 
+    /* Get PyCapsule object from self->c_dicts */
     capsule = PyDict_GetItem(self->c_dicts, level);
 
     if (capsule != NULL) {
+        /* ZSTD_CDict instance already exists */
         cdict = PyCapsule_GetPointer(capsule, NULL);
         goto success;
     } else {
+        /* Create ZSTD_CDict instance */
         Py_BEGIN_ALLOW_THREADS
         cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_content),
                                  Py_SIZE(self->dict_content), compressionLevel);
@@ -501,12 +504,14 @@ _get_CDict(ZstdDict *self, int compressionLevel)
             goto error;
         }
 
+        /* Put ZSTD_CDict instance into PyCapsule object */
         capsule = PyCapsule_New(cdict, NULL, capsule_free_cdict);
         if (capsule == NULL) {
             ZSTD_freeCDict(cdict);
             goto error;
         }
 
+        /* Add PyCapsule object to self->c_dicts */
         if (PyDict_SetItem(self->c_dicts, level, capsule) < 0) {
             Py_DECREF(capsule);
             goto error;
@@ -1269,10 +1274,10 @@ static PyType_Slot zstdcompressor_slots[] = {
 static PyType_Spec zstdcompressor_type_spec = {
     .name = "_zstd.ZstdCompressor",
     .basicsize = sizeof(ZstdCompressor),
-    // Calling PyType_GetModuleState() on a subclass is not safe.
-    // zstdcompressor_type_spec does not have Py_TPFLAGS_BASETYPE flag
-    // which prevents to create a subclass.
-    // So calling PyType_GetModuleState() in this file is always safe.
+    /* Calling PyType_GetModuleState() on a subclass is not safe.
+       zstdcompressor_type_spec does not have Py_TPFLAGS_BASETYPE flag
+       which prevents to create a subclass.
+       So calling PyType_GetModuleState() in this file is always safe. */
     .flags = Py_TPFLAGS_DEFAULT,
     .slots = zstdcompressor_slots,
 };
@@ -1635,10 +1640,10 @@ static PyType_Slot zstddecompressor_slots[] = {
 static PyType_Spec zstddecompressor_type_spec = {
     .name = "_zstd.ZstdDecompressor",
     .basicsize = sizeof(ZstdDecompressor),
-    // Calling PyType_GetModuleState() on a subclass is not safe.
-    // zstddecompressor_type_spec does not have Py_TPFLAGS_BASETYPE flag
-    // which prevents to create a subclass.
-    // So calling PyType_GetModuleState() in this file is always safe.
+    /* Calling PyType_GetModuleState() on a subclass is not safe.
+       zstddecompressor_type_spec does not have Py_TPFLAGS_BASETYPE flag
+       which prevents to create a subclass.
+       So calling PyType_GetModuleState() in this file is always safe. */
     .flags = Py_TPFLAGS_DEFAULT,
     .slots = zstddecompressor_slots,
 };
