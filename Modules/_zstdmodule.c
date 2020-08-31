@@ -1464,13 +1464,11 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 
     ACQUIRE_LOCK(self);
 
-    /* Input position */
-    in.pos = 0;
-
     /* Unconsumed data */
     if (self->input_buffer == NULL) {         
         in.src = data->buf;
         in.size = data->len;
+        in.pos = 0;
     } else {
         /* data is not b'' */
         if (data->len > 0) {
@@ -1488,6 +1486,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 
         in.src = self->input_buffer;
         in.size = self->input_buffer_size;
+        in.pos = 0;
     }
 
     /* Decompress */
