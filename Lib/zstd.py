@@ -7,7 +7,6 @@ __all__ = ('compress', 'decompress', 'train_dict',
            'get_frame_info', 'get_frame_size',
            'zstd_version', 'zstd_version_info', 'compress_level_bounds')
 
-import builtins
 import enum
 import io
 import os
