@@ -1537,6 +1537,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 
         /* Copy data to input buffer */
         memcpy(self->input_buffer + self->in_end, data->buf, data->len);
+        self->in_end += data->len;
 
         in.src = self->input_buffer + self->in_begin;
         in.size = used_now + data->len;
