@@ -62,8 +62,10 @@ typedef struct {
     /* False if input_buffer has unconsumed data */
     char needs_input;
 
+    /* Unconsumed input data */
     uint8_t *input_buffer;
     size_t input_buffer_size;
+    size_t in_begin, in_end;
 
     /* Thread lock for compressing */
     PyThread_type_lock lock;
@@ -1269,6 +1271,8 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     assert(self->dict == NULL);
     assert(self->input_buffer == NULL);
     assert(self->input_buffer_size == 0);
+    assert(self->in_begin == 0);
+    assert(self->in_end == 0);
     assert(self->inited == 0);
 
     /* at_frame_edge flag */
@@ -1466,15 +1470,20 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     ZSTD_inBuffer in;
     PyObject *ret;
     uint8_t *temp;
+    char use_input_buffer;
 
     ACQUIRE_LOCK(self);
 
     /* Unconsumed data */
-    if (self->input_buffer == NULL) {         
+    if (self->in_begin == self->in_end) {
+        use_input_buffer = 0;
+
         in.src = data->buf;
         in.size = data->len;
         in.pos = 0;
     } else {
+        use_input_buffer = 1;
+
         /* data is not b'' */
         if (data->len > 0) {
             temp = PyMem_Realloc(self->input_buffer,
@@ -1510,32 +1519,39 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         }
 
         /* Clear input_buffer */
-        if (self->input_buffer) {
-            PyMem_Free(self->input_buffer);
-            self->input_buffer = NULL;
-
-            self->input_buffer_size = 0;
-        }
+        self->in_begin = 0;
+        self->in_end = 0;
     } else {
         /* Has unconsumed data */
         assert(in.pos < in.size);
+        const size_t data_size = in.size - in.pos;
 
         self->needs_input = 0;
-
-        size_t const buffer_size = in.size - in.pos;
-        temp = PyMem_Malloc(buffer_size);
-        if (temp == NULL) {
-            PyErr_NoMemory();
-            goto error;
-        }
-        memcpy(temp, (uint8_t*)in.src + in.pos, buffer_size);
         
-        if (self->input_buffer) {
-            PyMem_Free(self->input_buffer);
-        }
+        if (!use_input_buffer) {
+            /* Discard buffer if it's too small
+               (resizing it may needlessly copy the current contents) */
+            if (self->input_buffer != NULL &&
+                self->input_buffer_size < data_size) {
+                PyMem_Free(self->input_buffer);
+                self->input_buffer = NULL;
+            }
 
-        self->input_buffer = temp;
-        self->input_buffer_size = buffer_size;
+            /* Allocate if necessary */
+            if (self->input_buffer == NULL) {
+                self->input_buffer = PyMem_Malloc(data_size);
+                if (self->input_buffer == NULL) {
+                    PyErr_NoMemory();
+                    goto error;
+                }
+                self->input_buffer_size = data_size;
+            }
+
+            /* Copy tail */
+            memcpy(self->input_buffer, (char*)in.src + in.pos, data_size);
+            self->in_begin = 0;
+            self->in_end = data_size;
+        }
     }
 
     goto success;
@@ -1544,12 +1560,9 @@ error:
     /* Reset needs_input */
     self->needs_input = 1;
 
-    /* Clear unconsumed data */
-    if (self->input_buffer) {
-        PyMem_Free(self->input_buffer);
-        self->input_buffer = NULL;
-    }
-    self->input_buffer_size = 0;
+    /* Clear input_buffer */
+    self->in_begin = 0;
+    self->in_end = 0;
 
     ret = NULL;
 success:
