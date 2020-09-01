@@ -38,6 +38,9 @@ typedef struct {
     /* ZstdDict object in use */
     PyObject *dict;
 
+    /* Last end directive, initialized as ZSTD_e_end */
+    int last_end_directive;
+
     /* Thread lock for compressing */
     PyThread_type_lock lock;
 
@@ -1004,6 +1007,9 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         goto error;
     }
 
+    /* Last end directive */
+    self->last_end_directive = ZSTD_e_end;
+
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
@@ -1183,6 +1189,10 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
 
     ACQUIRE_LOCK(self);
     ret = compress_impl(self, data, end_directive);
+
+    if (ret) {
+        self->last_end_directive = end_directive;
+    }
     RELEASE_LOCK(self);
 
     return ret;
@@ -1207,9 +1217,14 @@ _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
 /*[clinic end generated code: output=0206a53c394f4620 input=9f5cfc3560d831ac]*/
 {
     PyObject *ret;
+    const int end_directive = end_frame ? ZSTD_e_end : ZSTD_e_flush;
 
     ACQUIRE_LOCK(self);
-    ret = compress_impl(self, NULL, end_frame ? ZSTD_e_end : ZSTD_e_flush);
+    ret = compress_impl(self, NULL, end_directive);
+
+    if (ret) {
+        self->last_end_directive = end_directive;
+    }
     RELEASE_LOCK(self);
 
     return ret;
@@ -1245,11 +1260,21 @@ static PyMethodDef _ZstdCompressor_methods[] = {
     {NULL, NULL}
 };
 
+PyDoc_STRVAR(ZstdCompressor_last_end_directive_doc,
+"The last end directive, initialized as ZSTD_e_end.");
+
+static PyMemberDef _ZstdCompressor_members[] = {
+    {"last_end_directive", T_INT, offsetof(ZstdCompressor, last_end_directive),
+      READONLY, ZstdCompressor_last_end_directive_doc},
+    {NULL}
+};
+
 static PyType_Slot zstdcompressor_slots[] = {
     {Py_tp_new, _ZstdCompressor_new},
     {Py_tp_dealloc, _ZstdCompressor_dealloc},
     {Py_tp_init, _zstd_ZstdCompressor___init__},
     {Py_tp_methods, _ZstdCompressor_methods},
+    {Py_tp_members, _ZstdCompressor_members},
     //{Py_tp_doc, (char*)Compressor_doc},
     {Py_tp_traverse, _ZstdCompressor_traverse},
     {0, 0}
