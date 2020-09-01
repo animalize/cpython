@@ -788,11 +788,12 @@ error:
 
 /* Set compressLevel or compress parameters to compress context. */
 static int
-set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
-                 PyObject *level_or_option, int *compress_level)
+set_c_parameters(ZstdCompressor *self, PyObject *level_or_option, int *compress_level)
 {
     size_t zstd_ret;
     char msg_buf[160];
+
+    assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     /* Integer compression level */
     if (PyLong_Check(level_or_option)) {
@@ -804,10 +805,11 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
         }
 
         /* Set ZSTD_c_compressionLevel to compress context */
-        zstd_ret = ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, *compress_level);
+        zstd_ret = ZSTD_CCtx_setParameter(self->cctx, ZSTD_c_compressionLevel, *compress_level);
 
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
+            _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
             PyErr_Format(state->ZstdError,
                          "Error when setting compression level: %s",
                          ZSTD_getErrorName(zstd_ret));
@@ -843,8 +845,9 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
             }
 
             /* Set parameter to compress context */
-            zstd_ret = ZSTD_CCtx_setParameter(cctx, key_v, value_v);
+            zstd_ret = ZSTD_CCtx_setParameter(self->cctx, key_v, value_v);
             if (ZSTD_isError(zstd_ret)) {
+                _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
                 get_parameter_error_msg(msg_buf, sizeof(msg_buf), pos, key_v, value_v, 1),
                 PyErr_Format(state->ZstdError, msg_buf);
                 return -1;
@@ -860,12 +863,13 @@ set_c_parameters(_zstd_state *state, ZSTD_CCtx *cctx,
 
 /* Load dictionary (ZSTD_CDict instance) to compress context (ZSTD_CCtx instance). */
 static int
-load_c_dict(_zstd_state *state, ZSTD_CCtx *cctx,
-            PyObject *dict, int compress_level)
+load_c_dict(ZstdCompressor *self, PyObject *dict, int compress_level)
 {
     size_t zstd_ret;
     ZSTD_CDict *c_dict;
     int ret;
+    _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
 
     /* Check dict type */
     ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
@@ -884,7 +888,7 @@ load_c_dict(_zstd_state *state, ZSTD_CCtx *cctx,
     }
 
     /* Reference a prepared dictionary */
-    zstd_ret = ZSTD_CCtx_refCDict(cctx, c_dict);
+    zstd_ret = ZSTD_CCtx_refCDict(self->cctx, c_dict);
 
     /* Check error */
     if (ZSTD_isError(zstd_ret)) {
@@ -897,12 +901,14 @@ load_c_dict(_zstd_state *state, ZSTD_CCtx *cctx,
 
 /* Set decompress parameters to decompress context. */
 static int
-set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
+set_d_parameters(ZstdDecompressor *self, PyObject *option)
 {
     size_t zstd_ret;
     PyObject *key, *value;
     Py_ssize_t pos;
     char msg_buf[160];
+
+    assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     if (!PyDict_Check(option)) {
         PyErr_SetString(PyExc_TypeError, "option argument wrong type.");
@@ -927,10 +933,11 @@ set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
         }
 
         /* Set parameter to compress context */
-        zstd_ret = ZSTD_DCtx_setParameter(dctx, key_v, value_v);
+        zstd_ret = ZSTD_DCtx_setParameter(self->dctx, key_v, value_v);
 
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
+            _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
             get_parameter_error_msg(msg_buf, sizeof(msg_buf), pos, key_v, value_v, 0),
             PyErr_Format(state->ZstdError, msg_buf);
             return -1;
@@ -941,11 +948,13 @@ set_d_parameters(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *option)
 
 /* Load dictionary (ZSTD_DDict instance) to decompress context (ZSTD_DCtx instance). */
 static int
-load_d_dict(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *dict)
+load_d_dict(ZstdDecompressor *self, PyObject *dict)
 {
     size_t zstd_ret;
     ZSTD_DDict *d_dict;
     int ret;
+    _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
+    assert(state != NULL);
 
     /* Check dict type */
     ret = PyObject_IsInstance(dict, (PyObject*)state->ZstdDict_type);
@@ -964,7 +973,7 @@ load_d_dict(_zstd_state *state, ZSTD_DCtx *dctx, PyObject *dict)
     }
 
     /* Reference a decompress dictionary */
-    zstd_ret = ZSTD_DCtx_refDDict(dctx, d_dict);
+    zstd_ret = ZSTD_DCtx_refDDict(self->dctx, d_dict);
 
     /* Check error */
     if (ZSTD_isError(zstd_ret)) {
@@ -1050,8 +1059,8 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
 /*[clinic end generated code: output=65d92fb9ff1519cb input=b2d057ec4fdcd7cd]*/
 {
     int compress_level = 0; /* 0 means use zstd's default compression level */
-    _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
-    assert(state != NULL);
+
+    assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     /* Only called once */
     if (self->inited) {
@@ -1063,14 +1072,14 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
 
     /* Set compressLevel/options to compress context */
     if (level_or_option != Py_None) {
-        if (set_c_parameters(state, self->cctx, level_or_option, &compress_level) < 0) {
+        if (set_c_parameters(self, level_or_option, &compress_level) < 0) {
             return -1;
         }
     }
 
     /* Load dictionary to compress context */
     if (zstd_dict != Py_None) {
-        if (load_c_dict(state, self->cctx, zstd_dict, compress_level) < 0) {
+        if (load_c_dict(self, zstd_dict, compress_level) < 0) {
             return -1;
         }
 
@@ -1091,8 +1100,8 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
     BlocksOutputBuffer buffer;
     size_t zstd_ret;
     PyObject *ret;
-    _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
-    assert(state != NULL);
+
+    assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     /* Prepare input & output buffers */
     if (data != NULL) {
@@ -1119,6 +1128,7 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
 
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
+            _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
@@ -1344,8 +1354,7 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
                                      PyObject *zstd_dict, PyObject *option)
 /*[clinic end generated code: output=182ba99f2278542e input=a045b93d4dce1aa6]*/
 {
-    _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
-    assert(state != NULL);
+    assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     /* Only called once */
     if (self->inited) {
@@ -1357,14 +1366,14 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
 
     /* Set decompressLevel/options to decompress context */
     if (option != Py_None) {
-        if (set_d_parameters(state, self->dctx, option) < 0) {
+        if (set_d_parameters(self, option) < 0) {
             return -1;
         }
     }
 
     /* Load dictionary to decompress context */
     if (zstd_dict != Py_None) {
-        if (load_d_dict(state, self->dctx, zstd_dict) < 0) {
+        if (load_d_dict(self, zstd_dict) < 0) {
             return -1;
         }
 
@@ -1384,8 +1393,8 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
     ZSTD_outBuffer out;
     BlocksOutputBuffer buffer;
     PyObject *ret;
-    _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
-    assert(state != NULL);
+
+    assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     /* OutputBuffer(OnError)(&buffer) is after `error` label,
        so initialize the buffer before any `goto error` statement. */
@@ -1400,6 +1409,7 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
 
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
+            _zstd_state *state = PyType_GetModuleState(Py_TYPE(self));
             PyErr_SetString(state->ZstdError, ZSTD_getErrorName(zstd_ret));
             goto error;
         }
