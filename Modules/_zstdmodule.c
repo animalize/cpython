@@ -1473,12 +1473,19 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 
     ACQUIRE_LOCK(self);
 
-    /* No unconsumed data */
     if (self->in_begin == self->in_end) {
+        /* No unconsumed data */
         use_input_buffer = 0;
 
         in.src = data->buf;
         in.size = data->len;
+        in.pos = 0;
+    } else if (data->len == 0) {
+        /* Fast path for b'' */
+        use_input_buffer = 1;
+
+        in.src = self->input_buffer + self->in_begin;
+        in.size = self->in_end - self->in_begin;
         in.pos = 0;
     } else {
         use_input_buffer = 1;
