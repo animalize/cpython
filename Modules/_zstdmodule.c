@@ -1553,6 +1553,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         in.size = used_now + data->len;
         in.pos = 0;
     }
+    assert(in.pos == 0);
 
     /* Decompress */
     ret = decompress_impl(self, &in, data, max_length);
@@ -1604,6 +1605,9 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
             memcpy(self->input_buffer, (char*)in.src + in.pos, data_size);
             self->in_begin = 0;
             self->in_end = data_size;
+        } else {
+            /* Use input buffer */
+            self->in_begin += in.pos;
         }
     }
 
