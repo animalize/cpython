@@ -1488,12 +1488,12 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         /* Number of bytes we can append to input buffer */
         const Py_ssize_t avail_now = self->input_buffer_size - self->in_end;
         /* Number of bytes we can append if we move existing contents to
-           beginning of buffer (overwriting consumed input) */
+           beginning of buffer */
         const Py_ssize_t avail_total = self->input_buffer_size - used_now;
 
         if (avail_total < data->len) {
             uint8_t *tmp;
-            size_t new_size = (self->input_buffer_size - avail_total) + data->len;
+            const size_t new_size = used_now + data->len;
 
             /* Allocate with new size */
             tmp = PyMem_Malloc(new_size);
