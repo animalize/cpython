@@ -1495,26 +1495,39 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
             uint8_t *tmp;
             size_t new_size = (self->input_buffer_size - avail_total) + data->len;
 
-            /* Assign to temporary variable first, so we don't
-               lose address of allocated buffer if realloc fails */
-            tmp = PyMem_Realloc(self->input_buffer, new_size);
+            /* Allocate with new size */
+            tmp = PyMem_Malloc(new_size);
             if (tmp == NULL) {
                 PyErr_NoMemory();
                 goto error;
             }
+
+            /* Copy unconsumed data to the beginning of new buffer */
+            memcpy(tmp,
+                   self->input_buffer + self->in_begin,
+                   used_now);
+
+            /* Switch to new buffer */
+            PyMem_Free(self->input_buffer);
             self->input_buffer = tmp;
             self->input_buffer_size = new_size;
 
-            memmove(self->input_buffer,
-                    self->input_buffer + self->in_begin,
-                    used_now);
+            /* Set begin & end position */
+            self->in_begin = 0;
+            self->in_end = used_now;
         }
         else if (avail_now < data->len) {
             memmove(self->input_buffer,
                     self->input_buffer + self->in_begin,
                     used_now);
+
+            /* Set begin & end position */
+            self->in_begin = 0;
+            self->in_end = used_now;
         }
-        memcpy(self->input_buffer + used_now, data->buf, data->len);
+
+        /* Copy data to input buffer */
+        memcpy(self->input_buffer + self->in_end, data->buf, data->len);
 
         in.src = self->input_buffer + self->in_begin;
         in.size = used_now + data->len;
@@ -1565,7 +1578,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
                 self->input_buffer_size = data_size;
             }
 
-            /* Copy tail */
+            /* Copy unconsumed data */
             memcpy(self->input_buffer, (char*)in.src + in.pos, data_size);
             self->in_begin = 0;
             self->in_end = data_size;
