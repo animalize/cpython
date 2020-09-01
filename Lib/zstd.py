@@ -1,7 +1,7 @@
 
 __all__ = ('compress', 'decompress', 'train_dict',
            'ZstdCompressor', 'ZstdDecompressor', 'ZstdDict', 'ZstdError',
-           'ZstdFile', 'open',
+           'ZstdFile', 'zstd_open',
            'CompressParameter', 'DecompressParameter',
            'Strategy', 'EndDirective',
            'get_frame_info', 'get_frame_size',
@@ -15,6 +15,69 @@ import _compression
 
 from _zstd import *
 import _zstd
+
+
+class CompressParameter(enum.IntEnum):
+    compressionLevel           = ZSTD_c_compressionLevel
+    windowLog                  = ZSTD_c_windowLog
+    hashLog                    = ZSTD_c_hashLog
+    chainLog                   = ZSTD_c_chainLog
+    searchLog                  = ZSTD_c_searchLog
+    minMatch                   = ZSTD_c_minMatch
+    targetLength               = ZSTD_c_targetLength
+    strategy                   = ZSTD_c_strategy
+    enableLongDistanceMatching = ZSTD_c_enableLongDistanceMatching
+    ldmHashLog                 = ZSTD_c_ldmHashLog
+    ldmMinMatch                = ZSTD_c_ldmMinMatch
+    ldmBucketSizeLog           = ZSTD_c_ldmBucketSizeLog
+    ldmHashRateLog             = ZSTD_c_ldmHashRateLog
+    contentSizeFlag            = ZSTD_c_contentSizeFlag
+    checksumFlag               = ZSTD_c_checksumFlag
+    dictIDFlag                 = ZSTD_c_dictIDFlag
+
+    def bounds(self):
+        """Return lower and upper bounds of a parameter, both inclusive."""
+        return _zstd._get_cparam_bounds(self.value)
+    
+
+class DecompressParameter(enum.IntEnum):
+    windowLogMax = ZSTD_d_windowLogMax
+
+    def bounds(self):
+        """Return lower and upper bounds of a parameter, both inclusive."""
+        return _zstd._get_dparam_bounds(self.value)
+
+
+class Strategy(enum.IntEnum):
+    """Compression strategies, listed from fastest to strongest.
+
+       Note : new strategies _might_ be added in the future, only the order
+       (from fast to strong) is guaranteed.
+    """
+    fast     = ZSTD_fast
+    dfast    = ZSTD_dfast
+    greedy   = ZSTD_greedy
+    lazy     = ZSTD_lazy
+    lazy2    = ZSTD_lazy2
+    btlazy2  = ZSTD_btlazy2
+    btopt    = ZSTD_btopt
+    btultra  = ZSTD_btultra
+    btultra2 = ZSTD_btultra2
+
+
+class EndDirective(enum.IntEnum):
+    """Stream compressor's end directive.
+    
+    CONTINUE: Collect more data, encoder decides when to output compressed
+              result, for optimal compression ratio. Usually used for ordinary
+              streaming compression.
+    FLUSH:    Flush any remaining data, but don't end current frame. Usually
+              used for communication, the receiver can decode immediately.
+    END:      Flush any remaining data _and_ close current frame.
+    """
+    CONTINUE = ZSTD_e_continue
+    FLUSH    = ZSTD_e_flush
+    END      = ZSTD_e_end
 
 
 class EndlessDecompressReader(_compression.DecompressReader):
@@ -229,7 +292,7 @@ class ZstdFile(_compression.BaseStream):
         return self._pos
 
 
-def open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
+def zstd_open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
          encoding=None, errors=None, newline=None):
     if "t" in mode and "b" in mode:
         raise ValueError("Invalid mode: %r" % (mode,))
@@ -242,69 +305,6 @@ def open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
         return io.TextIOWrapper(binary_file, encoding, errors, newline)
     else:
         return binary_file
-
-
-class CompressParameter(enum.IntEnum):
-    compressionLevel           = ZSTD_c_compressionLevel
-    windowLog                  = ZSTD_c_windowLog
-    hashLog                    = ZSTD_c_hashLog
-    chainLog                   = ZSTD_c_chainLog
-    searchLog                  = ZSTD_c_searchLog
-    minMatch                   = ZSTD_c_minMatch
-    targetLength               = ZSTD_c_targetLength
-    strategy                   = ZSTD_c_strategy
-    enableLongDistanceMatching = ZSTD_c_enableLongDistanceMatching
-    ldmHashLog                 = ZSTD_c_ldmHashLog
-    ldmMinMatch                = ZSTD_c_ldmMinMatch
-    ldmBucketSizeLog           = ZSTD_c_ldmBucketSizeLog
-    ldmHashRateLog             = ZSTD_c_ldmHashRateLog
-    contentSizeFlag            = ZSTD_c_contentSizeFlag
-    checksumFlag               = ZSTD_c_checksumFlag
-    dictIDFlag                 = ZSTD_c_dictIDFlag
-
-    def bounds(self):
-        """Return lower and upper bounds of a parameter, both inclusive."""
-        return _zstd._get_cparam_bounds(self.value)
-    
-
-class DecompressParameter(enum.IntEnum):
-    windowLogMax = ZSTD_d_windowLogMax
-
-    def bounds(self):
-        """Return lower and upper bounds of a parameter, both inclusive."""
-        return _zstd._get_dparam_bounds(self.value)
-
-
-class Strategy(enum.IntEnum):
-    """Compression strategies, listed from fastest to strongest.
-
-       Note : new strategies _might_ be added in the future, only the order
-       (from fast to strong) is guaranteed.
-    """
-    fast     = ZSTD_fast
-    dfast    = ZSTD_dfast
-    greedy   = ZSTD_greedy
-    lazy     = ZSTD_lazy
-    lazy2    = ZSTD_lazy2
-    btlazy2  = ZSTD_btlazy2
-    btopt    = ZSTD_btopt
-    btultra  = ZSTD_btultra
-    btultra2 = ZSTD_btultra2
-
-
-class EndDirective(enum.IntEnum):
-    """Stream compressor's end directive.
-    
-    CONTINUE: Collect more data, encoder decides when to output compressed
-              result, for optimal compression ratio. Usually used for ordinary
-              streaming compression.
-    FLUSH:    Flush any remaining data, but don't end current frame. Usually
-              used for communication, the receiver can decode immediately.
-    END:      Flush any remaining data _and_ close current frame.
-    """
-    CONTINUE = ZSTD_e_continue
-    FLUSH    = ZSTD_e_flush
-    END      = ZSTD_e_end
 
 
 def compress(data, level_or_option=None, zstd_dict=None):
