@@ -1517,6 +1517,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
             self->in_end = used_now;
         }
         else if (avail_now < data->len) {
+            /* Move unconsumed data to the beginning */
             memmove(self->input_buffer,
                     self->input_buffer + self->in_begin,
                     used_now);
