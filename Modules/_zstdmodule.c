@@ -54,12 +54,14 @@ typedef struct {
     /* ZstdDict object in use */
     PyObject *dict;
 
-    /* 0 when a frame is completely decoded and fully
-       flushed, or the decompressor just be initialized. */
-    char frame_not_finished;
+    /* True when the output is at a frame edge, means a frame is completely
+       decoded and fully flushed, or the decompressor just be initialized.
+       Note that the input stream is not necessarily at a frame edge. */
+    char at_frame_edge;
 
     /* False if input_buffer has unconsumed data */
     char needs_input;
+
     uint8_t *input_buffer;
     size_t input_buffer_size;
 
@@ -1265,10 +1267,12 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     assert(self->dict == NULL);
-    assert(self->frame_not_finished == 0);
     assert(self->input_buffer == NULL);
     assert(self->input_buffer_size == 0);
     assert(self->inited == 0);
+
+    /* at_frame_edge flag */
+    self->at_frame_edge = 1;
 
     /* Need input flag */
     self->needs_input = 1;
@@ -1428,7 +1432,7 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
 
 success:
     /* (zstd_ret == 0) means a frame is completely decoded and fully flushed */
-    self->frame_not_finished = (zstd_ret == 0) ? 0 : 1;
+    self->at_frame_edge = (zstd_ret == 0) ? 1 : 0;
     return ret;
 error:
     OutputBuffer_OnError(&buffer);
@@ -1584,16 +1588,16 @@ static PyMethodDef _ZstdDecompressor_methods[] = {
 PyDoc_STRVAR(ZstdDecompressor_needs_input_doc,
 "True if more input is needed before more decompressed data can be produced.");
 
-PyDoc_STRVAR(ZstdDecompressor_frame_not_finished_doc,
-"0 when a frame is completely decoded and fully flushed, "
-"or the decompressor just be initialized. 1 means a frame"
-"has not been flushed yet.");
+PyDoc_STRVAR(ZstdDecompressor_at_frame_edge_doc,
+"True when the output is at a frame edge, means a frame is completely decoded "
+"and fully flushed, or the decompressor just be initialized. Note that the input "
+"stream is not necessarily at a frame edge.");
 
 static PyMemberDef _ZstdDecompressor_members[] = {
     {"needs_input", T_BOOL, offsetof(ZstdDecompressor, needs_input),
       READONLY, ZstdDecompressor_needs_input_doc},
-    {"frame_not_finished", T_BOOL, offsetof(ZstdDecompressor, frame_not_finished),
-      READONLY, ZstdDecompressor_frame_not_finished_doc},
+    {"at_frame_edge", T_BOOL, offsetof(ZstdDecompressor, at_frame_edge),
+      READONLY, ZstdDecompressor_at_frame_edge_doc},
     {NULL}
 };
 
