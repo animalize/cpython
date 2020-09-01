@@ -1404,11 +1404,12 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
             goto error;
         }
 
-        /* Output buffer exhausted.
-           Need to check `out` before `in`. Maybe zstd's internal buffer still
-           have a few bytes can be output, grow the output buffer and continue
-           if max_lengh < 0. */
         if (out.pos == out.size) {
+            /* Output buffer exhausted.
+               Need to check `out` before `in`. Maybe zstd's internal buffer still
+               have a few bytes can be output, grow the output buffer and continue
+               if max_lengh < 0. */
+
             /* Output buffer reached max_length */
             if (OutputBuffer_GetDataSize(&buffer, &out) == max_length) {
                 ret = OutputBuffer_Finish(&buffer, &out);
@@ -1481,13 +1482,14 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         in.size = data->len;
         in.pos = 0;
     } else if (data->len == 0) {
-        /* Fast path for b'' */
+        /* Has unconsumed data, fast path for b'' */
         use_input_buffer = 1;
 
         in.src = self->input_buffer + self->in_begin;
         in.size = self->in_end - self->in_begin;
         in.pos = 0;
     } else {
+        /* Has unconsumed data */
         use_input_buffer = 1;
 
         /* Unconsumed data size in input_buffer */
@@ -1548,9 +1550,11 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     }
 
     if (in.pos == in.size) {
-        /* Both input and output buffer exhausted, try to output
-           internal buffer's data next time. */
+        /* Input buffer exhausted */
+
         if (Py_SIZE(ret) == max_length) {
+            /* Both input and output buffer exhausted, try to output
+               internal buffer's data next time. */
             self->needs_input = 0;
         } else {
             self->needs_input = 1;
