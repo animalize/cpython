@@ -77,6 +77,13 @@ typedef struct {
     int inited;
 } ZstdDecompressor;
 
+typedef struct {
+    PyTypeObject *ZstdDict_type;
+    PyTypeObject *ZstdCompressor_type;
+    PyTypeObject *ZstdDecompressor_type;
+    PyObject *ZstdError;
+} _zstd_state;
+
 /*[clinic input]
 module _zstd
 class _zstd.ZstdDict "ZstdDict *" "&ZstdDict_Type"
@@ -297,13 +304,6 @@ OutputBuffer_OnError(BlocksOutputBuffer *buffer)
     Py_XDECREF(buffer->list);
 }
 
-
-typedef struct {
-    PyTypeObject *ZstdDict_type;
-    PyTypeObject *ZstdCompressor_type;
-    PyTypeObject *ZstdDecompressor_type;
-    PyObject *ZstdError;
-} _zstd_state;
 
 static inline _zstd_state *
 get_zstd_state(PyObject *module)

@@ -79,6 +79,57 @@ class EndDirective(enum.IntEnum):
     END      = ZSTD_e_end
 
 
+def compress(data, level_or_option=None, zstd_dict=None):
+    """Compress a block of data.
+
+    Refer to ZstdCompressor's docstring for a description of the
+    optional arguments *level_or_option* and *zstd_dict*.
+
+    For incremental compression, use an ZstdCompressor instead.
+    """
+    comp = ZstdCompressor(level_or_option, zstd_dict)
+    return comp.compress(data, ZSTD_e_end)
+
+
+def decompress(data, zstd_dict=None, option=None):
+    """Decompress a block of data.
+
+    Refer to ZstdDecompressor's docstring for a description of the
+    optional arguments *zstd_dict* and *option*.
+
+    For incremental decompression, use an ZstdDecompressor instead.
+    """
+    decomp = ZstdDecompressor(zstd_dict, option)
+    return decomp.decompress(data)
+
+
+def train_dict(iterable_of_chunks, dict_size=100*1024):
+    """Train a zstd dictionary, return a ZstdDict object.
+
+    In general:
+    1) A reasonable dictionary has a size of ~100 KB. It's possible to select
+       smaller or larger size, just by specifying dict_size argument.
+    2) It's recommended to provide a few thousands samples, though this can
+       vary a lot.
+    3) It's recommended that total size of all samples be about ~x100 times the
+       target size of dictionary.
+    """
+    chunks = []
+    chunk_sizes = []
+
+    for chunk in iterable_of_chunks:
+        chunks.append(chunk)
+        chunk_sizes.append(len(chunk))
+    chunks = b''.join(chunks)
+
+    # chunks: samples be stored concatenated in a single flat buffer.
+    # chunk_sizes: a list of each sample's size.
+    # dict_size: size of the dictionary, in bytes.
+    dict_content = _zstd._train_dict(chunks, chunk_sizes, dict_size)
+
+    return ZstdDict(dict_content)
+
+
 class EndlessDecompressReader(_compression.DecompressReader):
     """ Endless decompress reader for zstd, since zstd doesn't have
         an eof marker, the stream can be endless.
@@ -304,54 +355,3 @@ def zstd_open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
         return io.TextIOWrapper(binary_file, encoding, errors, newline)
     else:
         return binary_file
-
-
-def compress(data, level_or_option=None, zstd_dict=None):
-    """Compress a block of data.
-
-    Refer to ZstdCompressor's docstring for a description of the
-    optional arguments *level_or_option* and *zstd_dict*.
-
-    For incremental compression, use an ZstdCompressor instead.
-    """
-    comp = ZstdCompressor(level_or_option, zstd_dict)
-    return comp.compress(data, ZSTD_e_end)
-
-
-def decompress(data, zstd_dict=None, option=None):
-    """Decompress a block of data.
-
-    Refer to ZstdDecompressor's docstring for a description of the
-    optional arguments *zstd_dict* and *option*.
-
-    For incremental decompression, use an ZstdDecompressor instead.
-    """
-    decomp = ZstdDecompressor(zstd_dict, option)
-    return decomp.decompress(data)
-
-
-def train_dict(iterable_of_chunks, dict_size=100*1024):
-    """Train a zstd dictionary, return a ZstdDict object.
-
-    In general:
-    1) A reasonable dictionary has a size of ~100 KB. It's possible to select
-       smaller or larger size, just by specifying dict_size argument.
-    2) It's recommended to provide a few thousands samples, though this can
-       vary a lot.
-    3) It's recommended that total size of all samples be about ~x100 times the
-       target size of dictionary.
-    """
-    chunks = []
-    chunk_sizes = []
-
-    for chunk in iterable_of_chunks:
-        chunks.append(chunk)
-        chunk_sizes.append(len(chunk))
-    chunks = b''.join(chunks)
-
-    # chunks: samples be stored concatenated in a single flat buffer.
-    # chunk_sizes: a list of each sample's size.
-    # dict_size: size of the dictionary, in bytes.
-    dict_content = _zstd._train_dict(chunks, chunk_sizes, dict_size)
-
-    return ZstdDict(dict_content)
