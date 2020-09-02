@@ -1162,14 +1162,14 @@ success:
 _zstd.ZstdCompressor.compress
 
     data: Py_buffer
-        Data to be compressed.
+        Data to be compressed, a bytes-like object.
         
     end_directive: int(c_default="ZSTD_e_continue") = EndDirective.CONTINUE
         EndDirective.CONTINUE: Collect more data, encoder decides when to output
         compressed result, for optimal compression ratio. Usually used for ordinary
         streaming compression.
         EndDirective.FLUSH: Flush any remaining data, but don't end current frame.
-        Usually used for communication, the receiver can decode immediately.
+        Usually used for communication, the receiver can decode the data immediately.
         EndDirective.END: Flush any remaining data _and_ close current frame.
 
 Provide data to the compressor object.
@@ -1180,7 +1180,7 @@ Returns a chunk of compressed data if possible, or b'' otherwise.
 static PyObject *
 _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
                                    int end_directive)
-/*[clinic end generated code: output=09f541ea51afd468 input=5012c55d7dd6e7a3]*/
+/*[clinic end generated code: output=09f541ea51afd468 input=9a74f09aefc25554]*/
 {
     PyObject *ret;
 
@@ -1199,19 +1199,21 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
 _zstd.ZstdCompressor.flush
 
     end_frame: bool=True
-        True flush data and end the frame. False flush data, don't end the
-        frame.
+        True flush data and end the frame.
+        False flush data, don't end the frame, usually used for communication,
+        the receiver can decode the data immediately.
 
 Finish the compression process.
 
 Returns the compressed data left in internal buffers.
 
-The compressor object may be used after this method is called.
+Since zstd data consists of one or more independent frames, the compressor
+object can be used after this method is called.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
-/*[clinic end generated code: output=0206a53c394f4620 input=9f5cfc3560d831ac]*/
+/*[clinic end generated code: output=0206a53c394f4620 input=a7bc773c3a228735]*/
 {
     PyObject *ret;
     const int end_directive = end_frame ? ZSTD_e_end : ZSTD_e_flush;
@@ -1259,13 +1261,16 @@ static PyMemberDef _ZstdCompressor_members[] = {
     {NULL}
 };
 
+PyDoc_STRVAR(_ZstdCompressor_doc,
+    "Zstd dictionary, used for compress/decompress.");
+
 static PyType_Slot zstdcompressor_slots[] = {
     {Py_tp_new, _ZstdCompressor_new},
     {Py_tp_dealloc, _ZstdCompressor_dealloc},
     {Py_tp_init, _zstd_ZstdCompressor___init__},
     {Py_tp_methods, _ZstdCompressor_methods},
     {Py_tp_members, _ZstdCompressor_members},
-    //{Py_tp_doc, (char*)Compressor_doc},
+    {Py_tp_doc, (char*)_zstd_ZstdCompressor___init____doc__},
     {0, 0}
 };
 
@@ -1360,13 +1365,13 @@ _zstd.ZstdDecompressor.__init__
         A dictionary for setting advanced parameters. The default
         value None means to use zstd's default decompression parameters.
 
-Initialize ZstdDecompressor object.
+Initialize a ZstdDecompressor object.
 [clinic start generated code]*/
 
 static int
 _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
                                      PyObject *zstd_dict, PyObject *option)
-/*[clinic end generated code: output=182ba99f2278542e input=a045b93d4dce1aa6]*/
+/*[clinic end generated code: output=182ba99f2278542e input=be83f6924b0baaf7]*/
 {
     assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
@@ -1472,14 +1477,15 @@ error:
 _zstd.ZstdDecompressor.decompress
 
     data: Py_buffer
+        Data to be decompressed, a bytes-like object.
     max_length: Py_ssize_t = -1
+        If max_length is nonnegative, returns at most max_length bytes of
+        decompressed data. If this limit is reached and further output can be
+        produced, the needs_input attribute will be set to False. In this case,
+        the next call to decompress() may provide data as b'' to obtain more of
+        the output.
 
 Decompress *data*, returning uncompressed data as bytes.
-
-If *max_length *is nonnegative, returns at most *max_length *bytes of
-decompressed data. If this limit is reached and further output can be
-produced, *self.needs_input *will be set to ``False``. In this case, the next
-call to *decompress()* may provide *data *as b'' to obtain more of the output.
 
 If all of the input data was decompressed and returned (either because this
 was less than *max_length *bytes, or because *max_length *was negative),
@@ -1490,7 +1496,7 @@ static PyObject *
 _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
                                        Py_buffer *data,
                                        Py_ssize_t max_length)
-/*[clinic end generated code: output=a4302b3c940dbec6 input=52d061d9477a95ff]*/
+/*[clinic end generated code: output=a4302b3c940dbec6 input=c745631ba8a11577]*/
 {
     ZSTD_inBuffer in;
     PyObject *ret;
@@ -1684,7 +1690,7 @@ static PyType_Slot zstddecompressor_slots[] = {
     {Py_tp_init, _zstd_ZstdDecompressor___init__},
     {Py_tp_methods, _ZstdDecompressor_methods},
     {Py_tp_members, _ZstdDecompressor_members},
-    //{Py_tp_doc, (char*)Decompressor_doc},
+    {Py_tp_doc, (char*)_zstd_ZstdDecompressor___init____doc__},
     {0, 0}
 };
 
@@ -1705,12 +1711,12 @@ _zstd._get_cparam_bounds
 
     cParam: int
 
-Get cParameter bounds.
+Internal funciton, get cParameter bounds.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd__get_cparam_bounds_impl(PyObject *module, int cParam)
-/*[clinic end generated code: output=5b0f68046a6f0721 input=d98575eb2b39d124]*/
+/*[clinic end generated code: output=5b0f68046a6f0721 input=c7dd07c0298fdba3]*/
 {
     PyObject *ret;
 
@@ -1738,12 +1744,12 @@ _zstd._get_dparam_bounds
 
     dParam: int
 
-Get dParameter bounds.
+Internal funciton, get dParameter bounds.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd__get_dparam_bounds_impl(PyObject *module, int dParam)
-/*[clinic end generated code: output=6382b8e9779430c2 input=4a29b9fd6fafe7c6]*/
+/*[clinic end generated code: output=6382b8e9779430c2 input=9749914e8f919d60]*/
 {
     PyObject *ret;
 
@@ -1770,18 +1776,19 @@ _zstd__get_dparam_bounds_impl(PyObject *module, int dParam)
 _zstd.get_frame_info
 
     frame_buffer: Py_buffer
-        The start bytes of a frame, a frame header is 6-18 bytes, should not
-        be smaller than this size.
+        A bytes-like object. It should starts from the beginning of a frame, and
+        needs to include at least the frame header (2 to 14 bytes).
 
-Get zstd frame infomation.
+Get zstd frame infomation from a frame header.
 
 Return a two-items tuple: (decompressed_size, dictinary_id). If decompressed
-size is unknown, it will be None. If no dictionary, dictinary_id will be 0.
+size is unknown (generated by stream compression), it will be None. If no
+dictionary, dictinary_id will be 0.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
-/*[clinic end generated code: output=56e033cf48001929 input=39dccf0c3ed879bc]*/
+/*[clinic end generated code: output=56e033cf48001929 input=5738fc9c9eeda6dd]*/
 {
     unsigned long long content_size;
     char unknown_content_size;
@@ -1846,16 +1853,18 @@ error:
 _zstd.get_frame_size
 
     frame_buffer: Py_buffer
-        At least one complete frame, start at a frame's first byte.
+        A bytes-like object. It should starts from the beginning of a frame,
+        and needs to contain at least one complete frame.
 
 Get the size of a zstd frame.
 
-It will iterate all the blocks in a frame.
+It will iterate all blocks' header within a frame, to get the size of the
+frame.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_get_frame_size_impl(PyObject *module, Py_buffer *frame_buffer)
-/*[clinic end generated code: output=a7384c2f8780f442 input=67213417bcbc2db6]*/
+/*[clinic end generated code: output=a7384c2f8780f442 input=f21fb47ec793e693]*/
 {
     size_t frame_size;
     PyObject *ret;
