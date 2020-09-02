@@ -12,7 +12,7 @@ typedef struct {
     /* Content of the dictionary, bytes object. */
     PyObject *dict_content;
     /* Dictionary id */
-    UINT32 dict_id;
+    uint32_t dict_id;
 
     /* Reuseable compress/decompress dictionary, they are created once and
        can be shared by multiple threads concurrently, since its usage is
@@ -760,7 +760,7 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     Py_BEGIN_ALLOW_THREADS
     zstd_ret = ZDICT_trainFromBuffer(PyBytes_AS_STRING(dict_buffer), dict_size,
                                      PyBytes_AS_STRING(dst_data),
-                                     chunk_sizes, (UINT32)chunks_number);
+                                     chunk_sizes, (uint32_t)chunks_number);
     Py_END_ALLOW_THREADS
 
     /* Check zstd dict error. */
@@ -1792,7 +1792,7 @@ _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
 {
     unsigned long long content_size;
     char unknown_content_size;
-    UINT32 dict_id;
+    uint32_t dict_id;
     PyObject *temp;
     PyObject *ret = NULL;
 
