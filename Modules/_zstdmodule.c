@@ -1770,13 +1770,13 @@ _zstd.get_frame_info
 
 Get zstd frame infomation.
 
-Return a three-items tuple: (decompressed_size, dictinary_id). If decompressed
+Return a two-items tuple: (decompressed_size, dictinary_id). If decompressed
 size is unknown, it will be None. If no dictionary, dictinary_id will be 0.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
-/*[clinic end generated code: output=56e033cf48001929 input=23c7c2557e996f06]*/
+/*[clinic end generated code: output=56e033cf48001929 input=39dccf0c3ed879bc]*/
 {
     unsigned long long content_size;
     char unknown_content_size;
