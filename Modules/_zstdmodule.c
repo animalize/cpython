@@ -2,8 +2,8 @@
 #include "Python.h"
 #include "structmember.h"         // PyMemberDef
 
-#include "lib\zstd.h"
-#include "lib\dictBuilder\zdict.h"
+#include "lib/zstd.h"
+#include "lib/dictBuilder/zdict.h"
 
 
 typedef struct {
@@ -92,7 +92,7 @@ class _zstd.ZstdDecompressor "ZstdDecompressor *" "&ZstdDecompressor_type"
 [clinic start generated code]*/
 /*[clinic end generated code: output=da39a3ee5e6b4b0d input=7208e8cc544a5228]*/
 
-#include "clinic\_zstdmodule.c.h"
+#include "clinic/_zstdmodule.c.h"
 
 /* -----------------------------------
      BlocksOutputBuffer code 
