@@ -675,13 +675,6 @@ PyDoc_STRVAR(ZstdDict_dictid_doc,
 PyDoc_STRVAR(ZstdDict_dictbuffer_doc,
     "The content of the Zstd dictionary, a bytes object.");
 
-static int
-_ZstdDict_traverse(ZstdDict *self, visitproc visit, void *arg)
-{
-    Py_VISIT(Py_TYPE(self));
-    return 0;
-}
-
 static PyObject *
 _ZstdDict_str(ZstdDict *dict)
 {
@@ -707,7 +700,6 @@ static PyType_Slot zstddict_slots[] = {
     {Py_tp_init, _zstd_ZstdDict___init__},
     {Py_tp_str, _ZstdDict_str},
     {Py_tp_doc, (char*)_ZstdDict_dict_doc},
-    {Py_tp_traverse, _ZstdDict_traverse},
     {0, 0}
 };
 
@@ -1246,13 +1238,6 @@ _zstd_ZstdCompressor___reduce___impl(ZstdCompressor *self)
 }
 
 
-static int
-_ZstdCompressor_traverse(ZstdCompressor *self, visitproc visit, void *arg)
-{
-    Py_VISIT(Py_TYPE(self));
-    return 0;
-}
-
 static PyMethodDef _ZstdCompressor_methods[] = {
     _ZSTD_ZSTDCOMPRESSOR_COMPRESS_METHODDEF
     _ZSTD_ZSTDCOMPRESSOR_FLUSH_METHODDEF
@@ -1276,7 +1261,6 @@ static PyType_Slot zstdcompressor_slots[] = {
     {Py_tp_methods, _ZstdCompressor_methods},
     {Py_tp_members, _ZstdCompressor_members},
     //{Py_tp_doc, (char*)Compressor_doc},
-    {Py_tp_traverse, _ZstdCompressor_traverse},
     {0, 0}
 };
 
@@ -1667,13 +1651,6 @@ _zstd_ZstdDecompressor___reduce___impl(ZstdDecompressor *self)
     return NULL;
 }
 
-static int
-_ZstdDecompressor_traverse(ZstdDecompressor *self, visitproc visit, void *arg)
-{
-    Py_VISIT(Py_TYPE(self));
-    return 0;
-}
-
 static PyMethodDef _ZstdDecompressor_methods[] = {
     _ZSTD_ZSTDDECOMPRESSOR_DECOMPRESS_METHODDEF
     _ZSTD_ZSTDDECOMPRESSOR___REDUCE___METHODDEF
@@ -1703,7 +1680,6 @@ static PyType_Slot zstddecompressor_slots[] = {
     {Py_tp_methods, _ZstdDecompressor_methods},
     {Py_tp_members, _ZstdDecompressor_members},
     //{Py_tp_doc, (char*)Decompressor_doc},
-    {Py_tp_traverse, _ZstdDecompressor_traverse},
     {0, 0}
 };
 
