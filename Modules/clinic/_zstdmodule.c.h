@@ -6,10 +6,10 @@ PyDoc_STRVAR(_zstd_ZstdDict___init____doc__,
 "ZstdDict(dict_content)\n"
 "--\n"
 "\n"
-"Initialize ZstdDict object.\n"
+"Initialize a ZstdDict object, it can used for compress/decompress.\n"
 "\n"
 "  dict_content\n"
-"    Dictionary\'s content, a bytes object.");
+"    Dictionary\'s content, a bytes-like object.");
 
 static int
 _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content);
@@ -58,7 +58,7 @@ PyDoc_STRVAR(_zstd__train_dict__doc__,
 "_train_dict($module, /, dst_data, dst_data_sizes, dict_size)\n"
 "--\n"
 "\n"
-"Train a Zstd dictionary.");
+"Internal function, train a Zstd dictionary.");
 
 #define _ZSTD__TRAIN_DICT_METHODDEF    \
     {"_train_dict", (PyCFunction)(void(*)(void))_zstd__train_dict, METH_FASTCALL|METH_KEYWORDS, _zstd__train_dict__doc__},
@@ -110,13 +110,13 @@ PyDoc_STRVAR(_zstd_ZstdCompressor___init____doc__,
 "ZstdCompressor(level_or_option=None, zstd_dict=None)\n"
 "--\n"
 "\n"
-"Initialize ZstdCompressor object.\n"
+"Initialize a ZstdCompressor object.\n"
 "\n"
 "  level_or_option\n"
 "    It can be an int object, in this case represents the compression\n"
 "    level. It can also be a dictionary for setting various advanced\n"
 "    parameters. The default value None means to use zstd\'s default\n"
-"    compression parameters.\n"
+"    compression level/parameters.\n"
 "  zstd_dict\n"
 "    Pre-trained dictionary for compression, a ZstdDict object.");
 
@@ -165,10 +165,17 @@ PyDoc_STRVAR(_zstd_ZstdCompressor_compress__doc__,
 "\n"
 "Provide data to the compressor object.\n"
 "\n"
-"Returns a chunk of compressed data if possible, or b\'\' otherwise.\n"
+"  data\n"
+"    Data to be compressed.\n"
+"  end_directive\n"
+"    EndDirective.CONTINUE: Collect more data, encoder decides when to output\n"
+"    compressed result, for optimal compression ratio. Usually used for ordinary\n"
+"    streaming compression.\n"
+"    EndDirective.FLUSH: Flush any remaining data, but don\'t end current frame.\n"
+"    Usually used for communication, the receiver can decode immediately.\n"
+"    EndDirective.END: Flush any remaining data _and_ close current frame.\n"
 "\n"
-"When you have finished providing data to the compressor, call the\n"
-"flush() method to finish the compression process.");
+"Returns a chunk of compressed data if possible, or b\'\' otherwise.");
 
 #define _ZSTD_ZSTDCOMPRESSOR_COMPRESS_METHODDEF    \
     {"compress", (PyCFunction)(void(*)(void))_zstd_ZstdCompressor_compress, METH_FASTCALL|METH_KEYWORDS, _zstd_ZstdCompressor_compress__doc__},
@@ -589,4 +596,4 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=2e10fbb99b86591c input=a9049054013a1b77]*/
+/*[clinic end generated code: output=421d7e3e0068ad47 input=a9049054013a1b77]*/

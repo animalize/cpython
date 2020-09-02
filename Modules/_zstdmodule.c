@@ -610,14 +610,14 @@ _ZstdDict_dealloc(ZstdDict *self)
 _zstd.ZstdDict.__init__
 
     dict_content: object
-        Dictionary's content, a bytes object.
+        Dictionary's content, a bytes-like object.
 
-Initialize ZstdDict object.
+Initialize a ZstdDict object, it can used for compress/decompress.
 [clinic start generated code]*/
 
 static int
 _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
-/*[clinic end generated code: output=49ae79dcbb8ad2df input=85b3c5d16d12a001]*/
+/*[clinic end generated code: output=49ae79dcbb8ad2df input=951e34a71eaceee0]*/
 {
     /* Only called once */
     if (self->inited) {
@@ -667,7 +667,7 @@ static PyMethodDef _ZstdDict_methods[] = {
 };
 
 PyDoc_STRVAR(_ZstdDict_dict_doc,
-    "Zstd dictionary.");
+    "Zstd dictionary, used for compress/decompress.");
 
 PyDoc_STRVAR(ZstdDict_dictid_doc,
     "ID of Zstd dictionary, a 32-bit unsigned int value.");
@@ -718,13 +718,13 @@ _zstd._train_dict
     dst_data_sizes: object
     dict_size: Py_ssize_t
 
-Train a Zstd dictionary.
+Internal function, train a Zstd dictionary.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
                        PyObject *dst_data_sizes, Py_ssize_t dict_size)
-/*[clinic end generated code: output=d39b262ebfcac776 input=385ab3b6c6dcdc3d]*/
+/*[clinic end generated code: output=d39b262ebfcac776 input=b89015c8464efb81]*/
 {
     size_t *chunk_sizes = NULL;
     PyObject *dict_buffer = NULL;
@@ -1043,18 +1043,18 @@ _zstd.ZstdCompressor.__init__
         It can be an int object, in this case represents the compression
         level. It can also be a dictionary for setting various advanced
         parameters. The default value None means to use zstd's default
-        compression parameters.
+        compression level/parameters.
     zstd_dict: object = None
         Pre-trained dictionary for compression, a ZstdDict object.
 
-Initialize ZstdCompressor object.
+Initialize a ZstdCompressor object.
 [clinic start generated code]*/
 
 static int
 _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
                                    PyObject *level_or_option,
                                    PyObject *zstd_dict)
-/*[clinic end generated code: output=65d92fb9ff1519cb input=b2d057ec4fdcd7cd]*/
+/*[clinic end generated code: output=65d92fb9ff1519cb input=c1f7dd886ebfed34]*/
 {
     int compress_level = 0; /* 0 means use zstd's default compression level */
 
@@ -1162,20 +1162,25 @@ success:
 _zstd.ZstdCompressor.compress
 
     data: Py_buffer
+        Data to be compressed.
+        
     end_directive: int(c_default="ZSTD_e_continue") = EndDirective.CONTINUE
+        EndDirective.CONTINUE: Collect more data, encoder decides when to output
+        compressed result, for optimal compression ratio. Usually used for ordinary
+        streaming compression.
+        EndDirective.FLUSH: Flush any remaining data, but don't end current frame.
+        Usually used for communication, the receiver can decode immediately.
+        EndDirective.END: Flush any remaining data _and_ close current frame.
 
 Provide data to the compressor object.
 
 Returns a chunk of compressed data if possible, or b'' otherwise.
-
-When you have finished providing data to the compressor, call the
-flush() method to finish the compression process.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
                                    int end_directive)
-/*[clinic end generated code: output=09f541ea51afd468 input=901a2d3535fa9161]*/
+/*[clinic end generated code: output=09f541ea51afd468 input=5012c55d7dd6e7a3]*/
 {
     PyObject *ret;
 
