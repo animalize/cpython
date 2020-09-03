@@ -572,7 +572,7 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
-        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
+        PyErr_NoMemory();
         goto error;
     }
     return (PyObject*)self;
@@ -1012,7 +1012,7 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
-        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
+        PyErr_NoMemory();
         goto error;
     }
     return (PyObject*)self;
@@ -1325,7 +1325,7 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     /* Thread lock */
     self->lock = PyThread_allocate_lock();
     if (self->lock == NULL) {
-        PyErr_SetString(PyExc_MemoryError, "Unable to allocate lock");
+        PyErr_NoMemory();
         goto error;
     }
     return (PyObject*)self;
@@ -1643,7 +1643,7 @@ error:
     /* Reset needs_input */
     self->needs_input = 1;
 
-    /* Clear input_buffer */
+    /* Clear input buffer */
     self->in_begin = 0;
     self->in_end = 0;
 
