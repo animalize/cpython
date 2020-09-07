@@ -1667,6 +1667,13 @@ class PyBuildExt(build_ext):
         else:
             self.missing.append('_lzma')
 
+        # zstd compression support.
+        if self.compiler.find_library_file(self.lib_dirs, 'zstd'):
+            self.add(Extension('_zstd', ['_zstdmodule.c'],
+                               libraries=['zstd']))
+        else:
+            self.missing.append('_zstd')
+
     def detect_expat_elementtree(self):
         # Interface to the Expat XML parser
         #
