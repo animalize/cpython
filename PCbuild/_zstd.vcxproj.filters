@@ -104,11 +104,11 @@
     <Filter Include="Source Files\zstd">
       <UniqueIdentifier>{7099f549-734a-419c-9c37-7cc1f7d6a93f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{c9cf1f59-f59e-4981-abb8-5e065e02376b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{212ab3f3-e57a-4710-98be-7901f8ed7f42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{0716a01c-8676-4c88-9b52-d02513f606fc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

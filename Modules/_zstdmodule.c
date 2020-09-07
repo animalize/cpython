@@ -2,8 +2,8 @@
 #include "Python.h"
 #include "structmember.h"         // PyMemberDef
 
-#include "zstd.h"
-#include "zdict.h"
+#include <zstd.h>
+#include <zdict.h>
 
 
 typedef struct {
