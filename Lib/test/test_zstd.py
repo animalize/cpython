@@ -16,7 +16,9 @@ from test.support.os_helper import (
     TESTFN, unlink
 )
 
-lzma = import_module("lzma")
+zstd = import_module("zstd")
+from zstd import ZstdCompressor, ZstdDecompressor, ZstdError, \
+                 CompressParameter, DecompressParameter
 
 
 class CompressorDecompressorTestCase(unittest.TestCase):
@@ -24,44 +26,58 @@ class CompressorDecompressorTestCase(unittest.TestCase):
     # Test error cases.
 
     def test_simple_bad_args(self):
-        self.assertRaises(TypeError, LZMACompressor, [])
-        self.assertRaises(TypeError, LZMACompressor, format=3.45)
-        self.assertRaises(TypeError, LZMACompressor, check="")
-        self.assertRaises(TypeError, LZMACompressor, preset="asdf")
-        self.assertRaises(TypeError, LZMACompressor, filters=3)
-        # Can't specify FORMAT_AUTO when compressing.
-        self.assertRaises(ValueError, LZMACompressor, format=lzma.FORMAT_AUTO)
-        # Can't specify a preset and a custom filter chain at the same time.
-        with self.assertRaises(ValueError):
-            LZMACompressor(preset=7, filters=[{"id": lzma.FILTER_LZMA2}])
+        # ZstdCompressor
+        self.assertRaises(TypeError, ZstdCompressor, [])
+        self.assertRaises(TypeError, ZstdCompressor, level_or_option=3.14)
+        self.assertRaises(TypeError, ZstdCompressor, level_or_option='abc')
+        self.assertRaises(TypeError, ZstdCompressor, level_or_option=b'abc')
 
-        self.assertRaises(TypeError, LZMADecompressor, ())
-        self.assertRaises(TypeError, LZMADecompressor, memlimit=b"qw")
-        with self.assertRaises(TypeError):
-            LZMADecompressor(lzma.FORMAT_RAW, filters="zzz")
-        # Cannot specify a memory limit with FILTER_RAW.
-        with self.assertRaises(ValueError):
-            LZMADecompressor(lzma.FORMAT_RAW, memlimit=0x1000000)
-        # Can only specify a custom filter chain with FILTER_RAW.
-        self.assertRaises(ValueError, LZMADecompressor, filters=FILTERS_RAW_1)
-        with self.assertRaises(ValueError):
-            LZMADecompressor(format=lzma.FORMAT_XZ, filters=FILTERS_RAW_1)
-        with self.assertRaises(ValueError):
-            LZMADecompressor(format=lzma.FORMAT_ALONE, filters=FILTERS_RAW_1)
+        self.assertRaises(TypeError, ZstdCompressor, zstd_dict=123)
+        self.assertRaises(TypeError, ZstdCompressor, zstd_dict=b'abc')
+        self.assertRaises(TypeError, ZstdCompressor, zstd_dict={1:2, 3:4})
 
-        lzc = LZMACompressor()
-        self.assertRaises(TypeError, lzc.compress)
-        self.assertRaises(TypeError, lzc.compress, b"foo", b"bar")
-        self.assertRaises(TypeError, lzc.flush, b"blah")
-        empty = lzc.flush()
-        self.assertRaises(ValueError, lzc.compress, b"quux")
-        self.assertRaises(ValueError, lzc.flush)
+        with self.assertRaises(ValueError):
+            ZstdCompressor(2**31)
+        with self.assertRaises(ValueError):
+            ZstdCompressor({2**31 : 100})
 
-        lzd = LZMADecompressor()
+        with self.assertRaises(ZstdError):
+            ZstdCompressor({CompressParameter.windowLog:100})
+        with self.assertRaises(ZstdError):
+            ZstdCompressor({78787878 : 100})
+
+        # ZstdDecompressor
+        self.assertRaises(TypeError, ZstdDecompressor, ())
+        self.assertRaises(TypeError, ZstdDecompressor, zstd_dict=123)
+        self.assertRaises(TypeError, ZstdDecompressor, zstd_dict=b'abc')
+        self.assertRaises(TypeError, ZstdDecompressor, zstd_dict={1:2, 3:4})
+
+        self.assertRaises(TypeError, ZstdDecompressor, option=123)
+        self.assertRaises(TypeError, ZstdDecompressor, option='abc')
+        self.assertRaises(TypeError, ZstdDecompressor, option=b'abc')
+
+        with self.assertRaises(ValueError):
+            ZstdDecompressor(option={2**31 : 100})
+
+        with self.assertRaises(ZstdError):
+            ZstdDecompressor(option={DecompressParameter.windowLogMax:100})
+        with self.assertRaises(ZstdError):
+            ZstdDecompressor(option={78787878 : 100})
+
+        # Method bad arguments
+        zc = ZstdCompressor()
+        self.assertRaises(TypeError, zc.compress)
+        self.assertRaises(TypeError, zc.compress, b"foo", b"bar")
+        self.assertRaises(TypeError, zc.compress, "str")
+        # xxx self.assertRaises(TypeError, zc.compress, b"foo", 3)
+        self.assertRaises(TypeError, zc.flush, b"blah", 1)
+        empty = zc.flush()
+
+        lzd = ZstdDecompressor()
         self.assertRaises(TypeError, lzd.decompress)
         self.assertRaises(TypeError, lzd.decompress, b"foo", b"bar")
+        self.assertRaises(TypeError, lzd.decompress, "str")
         lzd.decompress(empty)
-        self.assertRaises(EOFError, lzd.decompress, b"quux")
 
     # def test_bad_filter_spec(self):
         # self.assertRaises(TypeError, LZMACompressor, filters=[b"wobsite"])

@@ -155,7 +155,7 @@ static const int BUFFER_BLOCK_SIZE[] =
 */
 static int
 OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
-                                ZSTD_outBuffer *ob)
+                         ZSTD_outBuffer *ob)
 {
     PyObject *b;
     int block_size;
