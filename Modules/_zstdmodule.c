@@ -153,7 +153,7 @@ static const int BUFFER_BLOCK_SIZE[] =
    Return 0 on success
    Return -1 on failure
 */
-static int
+static inline int
 OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
                          ZSTD_outBuffer *ob)
 {
@@ -197,7 +197,7 @@ OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
    Return 0 on success
    Return -1 on failure
 */
-static int
+static inline int
 OutputBuffer_Grow(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
 {
     PyObject *b;
