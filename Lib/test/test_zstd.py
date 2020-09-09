@@ -69,8 +69,8 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         self.assertRaises(TypeError, zc.compress)
         self.assertRaises(TypeError, zc.compress, b"foo", b"bar")
         self.assertRaises(TypeError, zc.compress, "str")
-        # xxx self.assertRaises(TypeError, zc.compress, b"foo", 3)
         self.assertRaises(TypeError, zc.flush, b"blah", 1)
+        self.assertRaises(ValueError, zc.compress, b"foo", 3)
         empty = zc.flush()
 
         lzd = ZstdDecompressor()
