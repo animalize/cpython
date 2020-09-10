@@ -18,7 +18,7 @@ from test.support.os_helper import (
 
 zstd = import_module("zstd")
 from zstd import ZstdCompressor, ZstdDecompressor, ZstdError, \
-                 CompressParameter, DecompressParameter, Strategy
+                 CParameter, DParameter, Strategy
 
 
 class CompressorDecompressorTestCase(unittest.TestCase):
@@ -42,7 +42,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
             ZstdCompressor({2**31 : 100})
 
         with self.assertRaises(ZstdError):
-            ZstdCompressor({CompressParameter.windowLog:100})
+            ZstdCompressor({CParameter.windowLog:100})
         with self.assertRaises(ZstdError):
             ZstdCompressor({3333 : 100})
 
@@ -60,7 +60,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
             ZstdDecompressor(option={2**31 : 100})
 
         with self.assertRaises(ZstdError):
-            ZstdDecompressor(option={DecompressParameter.windowLogMax:100})
+            ZstdDecompressor(option={DParameter.windowLogMax:100})
         with self.assertRaises(ZstdError):
             ZstdDecompressor(option={3333 : 100})
 
@@ -80,47 +80,47 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         lzd.decompress(empty)
 
     def test_compress_parameters(self):
-        d = {CompressParameter.compressionLevel : 10,
-             CompressParameter.windowLog : 12,
-             CompressParameter.hashLog : 10,
-             CompressParameter.chainLog : 12,
-             CompressParameter.searchLog : 12,
-             CompressParameter.minMatch : 4,
-             CompressParameter.targetLength : 12,
-             CompressParameter.strategy : Strategy.lazy,
-             CompressParameter.enableLongDistanceMatching : 1,
-             CompressParameter.ldmHashLog : 12,
-             CompressParameter.ldmMinMatch : 11,
-             CompressParameter.ldmBucketSizeLog : 5,
-             CompressParameter.ldmHashRateLog : 12,
-             CompressParameter.contentSizeFlag : 1,
-             CompressParameter.checksumFlag : 1,
-             CompressParameter.dictIDFlag : 0,
+        d = {CParameter.compressionLevel : 10,
+             CParameter.windowLog : 12,
+             CParameter.hashLog : 10,
+             CParameter.chainLog : 12,
+             CParameter.searchLog : 12,
+             CParameter.minMatch : 4,
+             CParameter.targetLength : 12,
+             CParameter.strategy : Strategy.lazy,
+             CParameter.enableLongDistanceMatching : 1,
+             CParameter.ldmHashLog : 12,
+             CParameter.ldmMinMatch : 11,
+             CParameter.ldmBucketSizeLog : 5,
+             CParameter.ldmHashRateLog : 12,
+             CParameter.contentSizeFlag : 1,
+             CParameter.checksumFlag : 1,
+             CParameter.dictIDFlag : 0,
              }
         ZstdCompressor(level_or_option=d)
 
         # larger than signed int, ValueError
         d1 = d.copy()
-        d1[CompressParameter.ldmBucketSizeLog] = 2**31
+        d1[CParameter.ldmBucketSizeLog] = 2**31
         self.assertRaises(ValueError, ZstdCompressor, d1)
 
         # value out of bounds, ZstdError
         d2 = d.copy()
-        d2[CompressParameter.ldmBucketSizeLog] = 10
+        d2[CParameter.ldmBucketSizeLog] = 10
         self.assertRaises(ZstdError, ZstdCompressor, d2)
 
     def test_decompress_parameters(self):
-        d = {DecompressParameter.windowLogMax : 15}
+        d = {DParameter.windowLogMax : 15}
         ZstdDecompressor(option=d)
 
         # larger than signed int, ValueError
         d1 = d.copy()
-        d1[DecompressParameter.windowLogMax] = 2**31
+        d1[DParameter.windowLogMax] = 2**31
         self.assertRaises(ValueError, ZstdDecompressor, None, d1)
 
         # value out of bounds, ZstdError
         d2 = d.copy()
-        d2[DecompressParameter.windowLogMax] = 32
+        d2[DParameter.windowLogMax] = 32
         self.assertRaises(ZstdError, ZstdDecompressor, None, d2)
 
     # def test_decompressor_after_eof(self):
