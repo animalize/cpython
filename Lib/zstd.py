@@ -72,7 +72,7 @@ def compress(data, level_or_option=None, zstd_dict=None):
     For incremental compression, use an ZstdCompressor instead.
     """
     comp = ZstdCompressor(level_or_option, zstd_dict)
-    return comp.compress(data, ZSTD_e_end)
+    return comp.compress(data, ZstdCompressor.FLUSH_FRAME)
 
 
 def decompress(data, zstd_dict=None, option=None):
