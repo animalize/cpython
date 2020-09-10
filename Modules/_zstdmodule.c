@@ -417,16 +417,16 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
 }
 
 
-#define ADD_INT_MACRO(module, macro)                      \
-    do {                                                  \
-        PyObject *o = PyLong_FromLong(macro);             \
-        if (o == NULL) {                                  \
-            return -1;                                    \
-        }                                                 \
-        if (PyModule_AddObject(module, #macro, o) < 0) {  \
-            Py_DECREF(o);                                 \
-            return -1;                                    \
-        }                                                 \
+#define ADD_INT_PREFIX_MACRO(module, macro)                  \
+    do {                                                     \
+        PyObject *o = PyLong_FromLong(macro);                \
+        if (o == NULL) {                                     \
+            return -1;                                       \
+        }                                                    \
+        if (PyModule_AddObject(module, "_" #macro, o) < 0) { \
+            Py_DECREF(o);                                    \
+            return -1;                                       \
+        }                                                    \
     } while(0)
 
 
@@ -434,25 +434,25 @@ static int
 add_parameters(PyObject *module)
 {
     /* Compress parameters */
-    ADD_INT_MACRO(module, ZSTD_c_compressionLevel);
-    ADD_INT_MACRO(module, ZSTD_c_windowLog);
-    ADD_INT_MACRO(module, ZSTD_c_hashLog);
-    ADD_INT_MACRO(module, ZSTD_c_chainLog);
-    ADD_INT_MACRO(module, ZSTD_c_searchLog);
-    ADD_INT_MACRO(module, ZSTD_c_minMatch);
-    ADD_INT_MACRO(module, ZSTD_c_targetLength);
-    ADD_INT_MACRO(module, ZSTD_c_strategy);
-    ADD_INT_MACRO(module, ZSTD_c_enableLongDistanceMatching);
-    ADD_INT_MACRO(module, ZSTD_c_ldmHashLog);
-    ADD_INT_MACRO(module, ZSTD_c_ldmMinMatch);
-    ADD_INT_MACRO(module, ZSTD_c_ldmBucketSizeLog);
-    ADD_INT_MACRO(module, ZSTD_c_ldmHashRateLog);
-    ADD_INT_MACRO(module, ZSTD_c_contentSizeFlag);
-    ADD_INT_MACRO(module, ZSTD_c_checksumFlag);
-    ADD_INT_MACRO(module, ZSTD_c_dictIDFlag);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_compressionLevel);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_windowLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_hashLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_chainLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_searchLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_minMatch);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_targetLength);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_strategy);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_enableLongDistanceMatching);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmHashLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmMinMatch);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmBucketSizeLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmHashRateLog);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_contentSizeFlag);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_checksumFlag);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_dictIDFlag);
 
     /* Decompress parameters */
-    ADD_INT_MACRO(module, ZSTD_d_windowLogMax);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_d_windowLogMax);
 
     return 0;
 }
@@ -1925,20 +1925,15 @@ zstd_exec(PyObject *module)
     }
 
     /* ZSTD_strategy enum */
-    ADD_INT_MACRO(module, ZSTD_fast);
-    ADD_INT_MACRO(module, ZSTD_dfast);
-    ADD_INT_MACRO(module, ZSTD_greedy);
-    ADD_INT_MACRO(module, ZSTD_lazy);
-    ADD_INT_MACRO(module, ZSTD_lazy2);
-    ADD_INT_MACRO(module, ZSTD_btlazy2);
-    ADD_INT_MACRO(module, ZSTD_btopt);
-    ADD_INT_MACRO(module, ZSTD_btultra);
-    ADD_INT_MACRO(module, ZSTD_btultra2);
-
-    /* EndDirective enum */
-    ADD_INT_MACRO(module, ZSTD_e_continue);
-    ADD_INT_MACRO(module, ZSTD_e_flush);
-    ADD_INT_MACRO(module, ZSTD_e_end);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_fast);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_dfast);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_greedy);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_lazy);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_lazy2);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btlazy2);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btopt);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btultra);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_btultra2);
 
     /* Set state's objects to NULL */
     state->ZstdError = NULL;
@@ -1978,6 +1973,31 @@ zstd_exec(PyObject *module)
     if (PyModule_AddType(module, (PyTypeObject*)state->ZstdCompressor_type) < 0) {
         goto error;
     }
+
+    /* Add EndDirective enum to ZstdCompressor */
+    temp = PyLong_FromLong(ZSTD_e_continue);
+    if (PyObject_SetAttrString((PyObject*)state->ZstdCompressor_type,
+                               "CONTINUE", temp) < 0) {
+        Py_DECREF(temp);
+        goto error;
+    }
+    Py_DECREF(temp);
+
+    temp = PyLong_FromLong(ZSTD_e_flush);
+    if (PyObject_SetAttrString((PyObject*)state->ZstdCompressor_type,
+                               "FLUSH_BLOCK", temp) < 0) {
+        Py_DECREF(temp);
+        goto error;
+    }
+    Py_DECREF(temp);
+
+    temp = PyLong_FromLong(ZSTD_e_end);
+    if (PyObject_SetAttrString((PyObject*)state->ZstdCompressor_type,
+                               "FLUSH_FRAME", temp) < 0) {
+        Py_DECREF(temp);
+        goto error;
+    }
+    Py_DECREF(temp);
 
     /* ZstdDecompressor */
     state->ZstdDecompressor_type = (PyTypeObject*)PyType_FromModuleAndSpec(module,
