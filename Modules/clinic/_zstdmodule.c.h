@@ -40,10 +40,7 @@ PyDoc_STRVAR(_zstd_ZstdDict___reduce____doc__,
 "__reduce__($self, /)\n"
 "--\n"
 "\n"
-"Intentionally not supporting pickle.\n"
-"\n"
-"If you need to save zstd dictionary to disk, please save .dict_content bytes\n"
-"object to disk, so that the zstd dictionary can be used by other programs.");
+"Intentionally not supporting pickle.");
 
 #define _ZSTD_ZSTDDICT___REDUCE___METHODDEF    \
     {"__reduce__", (PyCFunction)_zstd_ZstdDict___reduce__, METH_NOARGS, _zstd_ZstdDict___reduce____doc__},
@@ -609,4 +606,4 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=7da34f367b3d1e0b input=a9049054013a1b77]*/
+/*[clinic end generated code: output=91842dd40836f3e8 input=a9049054013a1b77]*/

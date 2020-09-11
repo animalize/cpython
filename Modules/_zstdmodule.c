@@ -645,22 +645,19 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
 _zstd.ZstdDict.__reduce__
 
 Intentionally not supporting pickle.
-
-If you need to save zstd dictionary to disk, please save .dict_content bytes
-object to disk, so that the zstd dictionary can be used by other programs.
 [clinic start generated code]*/
 
 static PyObject *
 _zstd_ZstdDict___reduce___impl(ZstdDict *self)
-/*[clinic end generated code: output=5c9b8a3550429417 input=17ad1a48928f2be1]*/
+/*[clinic end generated code: output=5c9b8a3550429417 input=3b3bf01bc131f928]*/
 {
     // return Py_BuildValue("O(O)", Py_TYPE(self), self->dict_content);
 
     PyErr_SetString(PyExc_TypeError,
-                    "Intentionally not supporting pickle. If you need to "
-                    "save zstd dictionary to disk, please save .dict_content "
-                    "bytes object to disk, so that the zstd dictionary can be "
-                    "used by other programs."
+                    "Intentionally not supporting pickle. If need to save zstd "
+                    "dictionary to disk, please save .dict_content attribute, "
+                    "it's a bytes object. So that the zstd dictionary can be "
+                    "used with other programs."
                     );
     return NULL;
 }
