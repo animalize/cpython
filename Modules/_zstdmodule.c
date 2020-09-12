@@ -95,7 +95,7 @@ class _zstd.ZstdDecompressor "ZstdDecompressor *" "&ZstdDecompressor_type"
 #include "clinic/_zstdmodule.c.h"
 
 /* -----------------------------------
-     BlocksOutputBuffer code 
+     BlocksOutputBuffer code
    ----------------------------------- */
 typedef struct {
     /* List of blocks */
@@ -323,7 +323,7 @@ get_zstd_state(PyObject *module)
 
 
 /* -----------------------------------
-     Parameters from zstd 
+     Parameters from zstd
    ----------------------------------- */
 
 typedef struct {
@@ -387,7 +387,7 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
             name = (list+i)->parameter_name;
         }
     }
-    
+
     /* Not a valid parameter */
     if (name == NULL) {
         PyOS_snprintf(buf, buf_size,
@@ -461,7 +461,7 @@ add_parameters(PyObject *module)
 
 
 /* -----------------------------------
-     ZstdDict code 
+     ZstdDict code
    ----------------------------------- */
 static void
 capsule_free_cdict(PyObject *capsule)
@@ -1072,7 +1072,7 @@ _zstd_ZstdCompressor___init___impl(ZstdCompressor *self,
 
     /* Only called once */
     if (self->inited) {
-        PyErr_SetString(PyExc_RuntimeError, 
+        PyErr_SetString(PyExc_RuntimeError,
                         "ZstdCompressor.__init__ function was called twice.");
         return -1;
     }
@@ -1171,7 +1171,7 @@ _zstd.ZstdCompressor.compress
 
     data: Py_buffer
         Data to be compressed, a bytes-like object.
-        
+
     mode: int(c_default="ZSTD_e_continue") = ZstdCompressor.CONTINUE
         ZstdCompressor.CONTINUE: Collect more data, encoder decides when to
         output compressed result, for optimal compression ratio. Usually used
@@ -1393,7 +1393,7 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
 
     /* Only called once */
     if (self->inited) {
-        PyErr_SetString(PyExc_RuntimeError, 
+        PyErr_SetString(PyExc_RuntimeError,
                         "ZstdDecompressor.__init__ function was called twice.");
         return -1;
     }
@@ -1622,7 +1622,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         const size_t data_size = in.size - in.pos;
 
         self->needs_input = 0;
-        
+
         if (!use_input_buffer) {
             /* Discard buffer if it's too small
                (resizing it may needlessly copy the current contents) */
