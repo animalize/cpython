@@ -433,6 +433,8 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
 static int
 add_parameters(PyObject *module)
 {
+    /* If add new parameters, please also add to cp_list/dp_list above. */
+
     /* Compress parameters */
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_compressionLevel);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_windowLog);
