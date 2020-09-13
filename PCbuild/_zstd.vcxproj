@@ -95,7 +95,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(zstdDir)\lib\;$(zstdDir)\lib\dictBuilder\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions></PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_MULTITHREAD</PreprocessorDefinitions>
       <DisableSpecificWarnings></DisableSpecificWarnings>
     </ClCompile>
   </ItemDefinitionGroup>

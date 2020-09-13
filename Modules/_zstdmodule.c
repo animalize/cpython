@@ -341,14 +341,20 @@ static const ParameterInfo cp_list[] =
     {ZSTD_c_minMatch,         "minMatch"},
     {ZSTD_c_targetLength,     "targetLength"},
     {ZSTD_c_strategy,         "strategy"},
+
     {ZSTD_c_enableLongDistanceMatching, "enableLongDistanceMatching"},
     {ZSTD_c_ldmHashLog,       "ldmHashLog"},
     {ZSTD_c_ldmMinMatch,      "ldmMinMatch"},
     {ZSTD_c_ldmBucketSizeLog, "ldmBucketSizeLog"},
     {ZSTD_c_ldmHashRateLog,   "ldmHashRateLog"},
+
     {ZSTD_c_contentSizeFlag,  "contentSizeFlag"},
     {ZSTD_c_checksumFlag,     "checksumFlag"},
-    {ZSTD_c_dictIDFlag,       "dictIDFlag"}
+    {ZSTD_c_dictIDFlag,       "dictIDFlag"},
+
+    {ZSTD_c_nbWorkers,        "nbWorkers"},
+    {ZSTD_c_jobSize,          "jobSize"},
+    {ZSTD_c_overlapLog,       "overlapLog"}
 };
 
 static const ParameterInfo dp_list[] =
@@ -444,14 +450,20 @@ add_parameters(PyObject *module)
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_minMatch);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_targetLength);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_strategy);
+
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_enableLongDistanceMatching);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmHashLog);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmMinMatch);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmBucketSizeLog);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_ldmHashRateLog);
+
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_contentSizeFlag);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_checksumFlag);
     ADD_INT_PREFIX_MACRO(module, ZSTD_c_dictIDFlag);
+
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_nbWorkers);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_jobSize);
+    ADD_INT_PREFIX_MACRO(module, ZSTD_c_overlapLog);
 
     /* Decompress parameters */
     ADD_INT_PREFIX_MACRO(module, ZSTD_d_windowLogMax);
