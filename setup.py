@@ -1669,8 +1669,10 @@ class PyBuildExt(build_ext):
 
         # zstd compression support.
         if self.compiler.find_library_file(self.lib_dirs, 'zstd'):
-            self.add(Extension('_zstd', ['_zstdmodule.c'],
-                               libraries=['zstd']))
+            self.add(Extension('_zstd',
+                               ['_zstdmodule.c'],
+                               libraries=['zstd'],
+                               extra_compile_args=["-DZSTD_MULTITHREAD"]))
         else:
             self.missing.append('_zstd')
 

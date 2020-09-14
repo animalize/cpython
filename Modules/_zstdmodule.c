@@ -44,6 +44,9 @@ typedef struct {
     /* Thread lock for compressing */
     PyThread_type_lock lock;
 
+    /* Enabled zstd multi-threading compression */
+    int zstd_multi_threading;
+
     /* __init__ has been called */
     int inited;
 } ZstdCompressor;
@@ -851,9 +854,22 @@ set_c_parameters(ZstdCompressor *self, PyObject *level_or_option, int *compress_
                 return -1;
             }
 
-            /* Get ZSTD_c_compressionLevel for generating ZSTD_CDICT */
             if (key_v == ZSTD_c_compressionLevel) {
+                /* Get compressionLevel for generating ZSTD_CDICT */
                 *compress_level = value_v;
+            } else if (key_v == ZSTD_c_nbWorkers) {
+                /* From zstd library doc:
+                   1. When nbWorkers >= 1, triggers asynchronous mode when
+                      used with ZSTD_compressStream2().
+                   2, Default value is `0`, aka "single-threaded mode" : no
+                      worker is spawned, compression is performed inside
+                      caller's thread, all invocations are blocking*/
+                if (value_v > 1) {
+                    self->zstd_multi_threading = 1;
+                } else if (value_v == 1) {
+                    /* Use single-threaded mode */
+                    value_v = 0;
+                }
             }
 
             /* Set parameter to compress context */
@@ -1012,6 +1028,7 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     assert(self->dict == NULL);
+    assert(self->zstd_multi_threading == 0);
     assert(self->inited == 0);
 
     /* Compress context */
@@ -1211,6 +1228,18 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
         mode != ZSTD_e_continue) {
         PyErr_Format(PyExc_ValueError,
                      "mode argument wrong value: %d.", mode);
+        return NULL;
+    }
+
+    /* Check zstd multi-threading with ZSTD_e_continue mode */
+    if (self->zstd_multi_threading && mode == ZSTD_e_continue) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "ZstdCompressor.CONTINUE mode is not supported when "
+                        "using zstd multi-threading compression (set compress "
+                        "parameter \"nbWorkers\" > 1), supporting this mode "
+                        "will make the code greatly complicated. Please use "
+                        "ZstdCompressor.FLUSH_BLOCK mode or "
+                        "ZstdCompressor.FLUSH_FRAME mode.");
         return NULL;
     }
 
