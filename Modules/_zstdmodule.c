@@ -1477,6 +1477,7 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
     if (OutputBuffer_InitAndGrow(&buffer, max_length, &out) < 0) {
         goto error;
     }
+    assert(out.pos == 0);
 
     while (1) {
         Py_BEGIN_ALLOW_THREADS
@@ -1522,8 +1523,11 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
     }
 
 success:
-    /* (zstd_ret == 0) means a frame is completely decoded and fully flushed */
-    self->at_frame_edge = (zstd_ret == 0) ? 1 : 0;
+    /* Set at_frame_edge flag when outputted.
+       (zstd_ret == 0) means a frame is completely decoded and fully flushed */
+    if (out.pos > 0) {
+        self->at_frame_edge = (zstd_ret == 0) ? 1 : 0;
+    }
     return ret;
 error:
     OutputBuffer_OnError(&buffer);
