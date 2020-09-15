@@ -1226,8 +1226,10 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
     if (mode != ZSTD_e_end &&
         mode != ZSTD_e_flush &&
         mode != ZSTD_e_continue) {
-        PyErr_Format(PyExc_ValueError,
-                     "mode argument wrong value: %d.", mode);
+        PyErr_SetString(PyExc_ValueError,
+                        "mode argument wrong value, it should be one of "
+                        "ZstdCompressor.CONTINUE, ZstdCompressor.FLUSH_BLOCK, "
+                        "ZstdCompressor.FLUSH_FRAME.");
         return NULL;
     }
 
@@ -1523,11 +1525,15 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
     }
 
 success:
-    /* check (out.pos > 0):
+    /* (zstd_ret == 0) means a frame is completely decoded and fully flushed
+    
+       check (out.pos > 0):
            set at_frame_edge flag when outputted.
        check (zstd_ret == 0):
            in rare cases, frame epilogue is decoded, but no output data.
-       (zstd_ret == 0) means a frame is completely decoded and fully flushed */
+
+       Check these because after decoding a frame, decompress an empty input
+       will cause zstd_ret becomes non-zero. */
     if (out.pos > 0 || zstd_ret == 0) {
         self->at_frame_edge = (zstd_ret == 0) ? 1 : 0;
     }
