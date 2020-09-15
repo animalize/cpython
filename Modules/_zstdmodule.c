@@ -692,7 +692,7 @@ PyDoc_STRVAR(ZstdDict_dictid_doc,
     "ID of zstd dictionary, a 32-bit unsigned int value.");
 
 PyDoc_STRVAR(ZstdDict_dictbuffer_doc,
-    "The content of zstd dictionary, a bytes object.");
+    "The content of zstd dictionary, a bytes object. Can be used with other programs.");
 
 static PyObject *
 _ZstdDict_str(ZstdDict *dict)
@@ -1315,7 +1315,10 @@ static PyMethodDef _ZstdCompressor_methods[] = {
 };
 
 PyDoc_STRVAR(ZstdCompressor_last_mode_doc,
-"The last mode used to this compressor, initialized to FLUSH_FRAME.");
+"The last mode used to this compressor, its value can be CONTINUE, "
+"FLUSH_BLOCK, FLUSH_FRAME. Initialized to FLUSH_FRAME.\n"
+"It can be used to get the current state of a compressor, such as, a block "
+"ends, a frame ends.");
 
 static PyMemberDef _ZstdCompressor_members[] = {
     {"last_mode", T_INT, offsetof(ZstdCompressor, last_mode),
@@ -1748,13 +1751,16 @@ static PyMethodDef _ZstdDecompressor_methods[] = {
 };
 
 PyDoc_STRVAR(ZstdDecompressor_needs_input_doc,
-"False if the decompressor has unconsumed input data, pass b'' to decompress "
-"method will output them.");
+"If max_length argument is nonnegative, and decompressor has (or may has) "
+"unconsumed input data, needs_input will be set to False. In this case, pass "
+"empty bytes b'' to decompress() method can output unconsumed data.");
 
 PyDoc_STRVAR(ZstdDecompressor_at_frame_edge_doc,
 "True when the output is at a frame edge, means a frame is completely decoded "
-"and fully flushed, or the decompressor just be initialized. Note that the input "
-"stream is not necessarily at a frame edge.");
+"and fully flushed, or the decompressor just be initialized.\n"
+"Since zstd data doesn't have an end marker, it could be used to check data "
+"integrity.\n"
+"Note that the input stream is not necessarily at a frame edge.");
 
 static PyMemberDef _ZstdDecompressor_members[] = {
     {"needs_input", T_BOOL, offsetof(ZstdDecompressor, needs_input),
