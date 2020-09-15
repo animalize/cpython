@@ -2001,10 +2001,10 @@ zstd_exec(PyObject *module)
                                 "Call to zstd failed.",
                                 NULL, NULL);
     if (state->ZstdError == NULL) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddType(module, (PyTypeObject *)state->ZstdError) < 0) {
-        goto error;
+        return -1;
     }
 
     /* ZstdDict */
@@ -2012,20 +2012,20 @@ zstd_exec(PyObject *module)
                                                                     &zstddict_type_spec,
                                                                     NULL);
     if (state->ZstdDict_type == NULL) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddType(module, (PyTypeObject *)state->ZstdDict_type) < 0) {
-        goto error;
+        return -1;
     }
 
     /* ZstdCompressor */
     state->ZstdCompressor_type = (PyTypeObject*)PyType_FromModuleAndSpec(module,
                                                 &zstdcompressor_type_spec, NULL);
     if (state->ZstdCompressor_type == NULL) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddType(module, (PyTypeObject*)state->ZstdCompressor_type) < 0) {
-        goto error;
+        return -1;
     }
 
     /* Add EndDirective enum to ZstdCompressor */
@@ -2033,7 +2033,7 @@ zstd_exec(PyObject *module)
     if (PyObject_SetAttrString((PyObject*)state->ZstdCompressor_type,
                                "CONTINUE", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
     Py_DECREF(temp);
 
@@ -2041,7 +2041,7 @@ zstd_exec(PyObject *module)
     if (PyObject_SetAttrString((PyObject*)state->ZstdCompressor_type,
                                "FLUSH_BLOCK", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
     Py_DECREF(temp);
 
@@ -2049,7 +2049,7 @@ zstd_exec(PyObject *module)
     if (PyObject_SetAttrString((PyObject*)state->ZstdCompressor_type,
                                "FLUSH_FRAME", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
     Py_DECREF(temp);
 
@@ -2057,69 +2057,62 @@ zstd_exec(PyObject *module)
     state->ZstdDecompressor_type = (PyTypeObject*)PyType_FromModuleAndSpec(module,
                                                   &zstddecompressor_type_spec, NULL);
     if (state->ZstdDecompressor_type == NULL) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddType(module, (PyTypeObject*)state->ZstdDecompressor_type) < 0) {
-        goto error;
+        return -1;
     }
 
     /* zstd_version, ZSTD_versionString() requires zstd v1.3.0+ */
     if (!(temp = PyUnicode_FromString(ZSTD_versionString()))) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddObject(module, "zstd_version", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
 
     /* zstd_version_info */
     if (!(temp = PyTuple_New(3))) {
-        goto error;
+        return -1;
     }
     PyTuple_SET_ITEM(temp, 0, PyLong_FromLong(ZSTD_VERSION_MAJOR));
     PyTuple_SET_ITEM(temp, 1, PyLong_FromLong(ZSTD_VERSION_MINOR));
     PyTuple_SET_ITEM(temp, 2, PyLong_FromLong(ZSTD_VERSION_RELEASE));
     if (PyModule_AddObject(module, "zstd_version_info", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
 
     /* compressionLevel values */
     temp = PyLong_FromLong(ZSTD_CLEVEL_DEFAULT);
     if (temp == NULL) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddObject(module, "_ZSTD_CLEVEL_DEFAULT", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
 
     temp = PyLong_FromLong(ZSTD_minCLevel());
     if (temp == NULL) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddObject(module, "_ZSTD_minCLevel", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
 
     temp = PyLong_FromLong(ZSTD_maxCLevel());
     if (temp == NULL) {
-        goto error;
+        return -1;
     }
     if (PyModule_AddObject(module, "_ZSTD_maxCLevel", temp) < 0) {
         Py_DECREF(temp);
-        goto error;
+        return -1;
     }
 
     return 0;
-
-error:
-    Py_XDECREF(state->ZstdError);
-    Py_XDECREF(state->ZstdDict_type);
-    Py_XDECREF(state->ZstdCompressor_type);
-    Py_XDECREF(state->ZstdDecompressor_type);
-    return -1;
 }
 
 static PyMethodDef _zstd_methods[] = {
