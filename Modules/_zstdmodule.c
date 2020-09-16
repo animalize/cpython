@@ -653,7 +653,7 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
         return -1;
     }
 
-    /* Get dict_id */
+    /* Get dict_id, 0 means "raw content" dictionary. */
     self->dict_id = ZDICT_getDictID(PyBytes_AS_STRING(dict_content),
                                     Py_SIZE(dict_content));
 
