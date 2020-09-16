@@ -644,12 +644,12 @@ _zstd_ZstdDict___init___impl(ZstdDict *self, PyObject *dict_content)
         return -1;
     }
 
-    /* Both "raw content" dictionary and ordinary dictionary should
+    /* Both ordinary dictionary and "raw content" dictionary should
        at least 8 bytes */
     if (Py_SIZE(self->dict_content) < 8) {
         Py_CLEAR(self->dict_content);
         PyErr_SetString(PyExc_ValueError,
-                        "dictionary should at least 8 bytes.");
+                        "dictionary content should at least 8 bytes.");
         return -1;
     }
 
