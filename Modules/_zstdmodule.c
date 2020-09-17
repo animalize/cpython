@@ -1322,10 +1322,16 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
     if (rich_mem) {
         /* Calculate output buffer's size */
         size_t output_buffer_size = ZSTD_compressBound(in.size);
+#ifdef _MSC_VER
+        /* When compiled with MSVC, ZSTD_compressBound() is slower that
+           ZSTD_compressBound()-1, need to investigate the reason. */
+        output_buffer_size -= 1;
+#endif
+
         if (output_buffer_size > (size_t) PY_SSIZE_T_MAX) {
             PyErr_SetString(PyExc_MemoryError,
-                            "Rich memory mode requests too much memory, "
-                            "please use a 64-bit system or do not use rich "
+                            "Rich memory mode requests memory greater than "
+                            "2GB, please use a 64-bit system or disable rich "
                             "memory mode.");
             return NULL;
         }
@@ -1430,6 +1436,9 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
         return NULL;
     }
 
+    /* Thread-safe code */
+    ACQUIRE_LOCK(self);
+
     /* Use rich memory mode */
     if (self->rich_memory &&
         self->last_mode == ZSTD_e_end &&
@@ -1439,8 +1448,7 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
         rich_mem = 0;
     }
 
-    /* Compress */
-    ACQUIRE_LOCK(self);
+    /* compress */
     ret = compress_impl(self, data, mode, rich_mem);
 
     if (ret) {
@@ -1474,6 +1482,7 @@ _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int end_frame)
     PyObject *ret;
     const int end_directive = end_frame ? ZSTD_e_end : ZSTD_e_flush;
 
+    /* Thread-safe code */
     ACQUIRE_LOCK(self);
     ret = compress_impl(self, NULL, end_directive, 0);
 
