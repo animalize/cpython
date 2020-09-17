@@ -21,6 +21,7 @@ from zstd import ZstdCompressor, ZstdDecompressor, ZstdError, \
                  CParameter, DParameter, Strategy, compress, decompress
 
 COMPRESSED_DAT1 = compress(b'abcdefg123456' * 1000)
+DAT_100_PLUS_32KB = compress(b'a' * (100 + 32*1024))
 
 class CompressorDecompressorTestCase(unittest.TestCase):
 
@@ -148,18 +149,15 @@ class DecompressorFlagsTestCase(unittest.TestCase):
         self.assertTrue(d.needs_input)
 
     def test_empty_input_after_32K_dat(self):
-        # 100 + 32KB
-        dat = compress(b'a' * (100 + 32*1024))
-
         d = ZstdDecompressor()
 
         # decompress first 100 bytes
-        d.decompress(dat, 100)
+        d.decompress(DAT_100_PLUS_32KB, 100)
         self.assertFalse(d.at_frame_edge)
         self.assertFalse(d.needs_input)
 
         # decompress the rest
-        d.decompress(b'')
+        d.decompress(b'', -1)
         self.assertTrue(d.at_frame_edge)
         self.assertTrue(d.needs_input)
 
@@ -168,6 +166,23 @@ class DecompressorFlagsTestCase(unittest.TestCase):
         self.assertTrue(d.at_frame_edge)
         self.assertTrue(d.needs_input)
 
+    def test_empty_input_after_32K_dat2(self):
+        d = ZstdDecompressor()
+
+        # decompress first 100 bytes
+        d.decompress(DAT_100_PLUS_32KB, 100)
+        self.assertFalse(d.at_frame_edge)
+        self.assertFalse(d.needs_input)
+
+        # decompress the rest
+        d.decompress(b'', 32*1024)      # different from above test
+        self.assertTrue(d.at_frame_edge)
+        self.assertFalse(d.needs_input) # different from above test
+
+        # empty input
+        d.decompress(b'')
+        self.assertTrue(d.at_frame_edge)
+        self.assertTrue(d.needs_input)
 
 # # Test data:
 
