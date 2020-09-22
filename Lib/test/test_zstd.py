@@ -230,26 +230,27 @@ class DecompressorFlagsTestCase(unittest.TestCase):
         self.assertTrue(d.needs_input)
 
     def test_skippable_frames(self):
-        # skippable frame
         d = ZstdDecompressor()
-        output = d.decompress(SKIPPABLE_FRAME)
 
+        # skippable frame
+        output = d.decompress(SKIPPABLE_FRAME)
         self.assertEqual(len(output), 0)
         self.assertTrue(d.at_frame_edge)
         self.assertTrue(d.needs_input)
 
         # normal frame
-        d.decompress(DAT_100_PLUS_32KB, 100)
+        output = d.decompress(DAT_100_PLUS_32KB, 100)
+        self.assertEqual(len(output), 100)
         self.assertFalse(d.at_frame_edge)
         self.assertFalse(d.needs_input)
 
-        d.decompress(b'', 32*1024)
+        output = d.decompress(b'', 32*1024)
+        self.assertEqual(len(output), 32*1024)
         self.assertTrue(d.at_frame_edge)
         self.assertFalse(d.needs_input)
 
         # skippable frame
         output = d.decompress(SKIPPABLE_FRAME)
-
         self.assertEqual(len(output), 0)
         self.assertTrue(d.at_frame_edge)
         self.assertTrue(d.needs_input)
