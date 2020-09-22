@@ -129,6 +129,7 @@ class DecompressorFlagsTestCase(unittest.TestCase):
     def test_empty_input(self):
         d = ZstdDecompressor()
         self.assertTrue(d.at_frame_edge)
+        self.assertTrue(d.needs_input)
 
         for _ in range(3):
             d.decompress(b'')
@@ -180,6 +181,47 @@ class DecompressorFlagsTestCase(unittest.TestCase):
         self.assertFalse(d.needs_input) # different from above test
 
         # empty input
+        d.decompress(b'')
+        self.assertTrue(d.at_frame_edge)
+        self.assertTrue(d.needs_input)
+
+    def test_frame_with_epilogue(self):
+        # with a checksumFlag
+        option = {CParameter.checksumFlag:1}
+        data = compress(b'a'*42, option)
+
+        # maxlength = 42
+        d = ZstdDecompressor()
+        d.decompress(data, 42)
+        self.assertTrue(d.at_frame_edge)
+        self.assertFalse(d.needs_input)
+
+        d.decompress(b'', 1)
+        self.assertTrue(d.at_frame_edge)
+        self.assertTrue(d.needs_input)
+
+    def test_multi_frames(self):
+        # with a checksumFlag
+        option = {CParameter.checksumFlag:1}
+        c = ZstdCompressor(option)
+
+        data = c.compress(b'a'*42, c.FLUSH_FRAME)
+        data += c.compress(b'b'*60, c.FLUSH_FRAME)
+
+        d = ZstdDecompressor()
+
+        d.decompress(data, 21)
+        self.assertFalse(d.at_frame_edge)
+        self.assertFalse(d.needs_input)
+
+        d.decompress(data, 21)
+        self.assertTrue(d.at_frame_edge)
+        self.assertFalse(d.needs_input)
+
+        d.decompress(b'', 60)
+        self.assertTrue(d.at_frame_edge)
+        self.assertFalse(d.needs_input)
+
         d.decompress(b'')
         self.assertTrue(d.at_frame_edge)
         self.assertTrue(d.needs_input)
