@@ -1478,6 +1478,8 @@ _zstd_ZstdCompressor_rich_mem_compress_impl(ZstdCompressor *self,
     if (self->last_mode == ZSTD_e_end) {
         rich_mem = 1;
     } else {
+        rich_mem = 0;
+
         char *msg = "When compress data using .rich_mem_compress() method, "
                     "the last mode used to ZstdCompressor object must be "
                     "ZstdCompressor.FLUSH_FRAME, otherwise the rich memory "
@@ -1493,7 +1495,6 @@ _zstd_ZstdCompressor_rich_mem_compress_impl(ZstdCompressor *self,
             ret = NULL;
             goto error;
         }
-        rich_mem = 0;
     }
 
     /* Compress */
