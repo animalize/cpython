@@ -287,6 +287,9 @@ class ClassShapeTestCase(unittest.TestCase):
         with self.assertRaises(AttributeError):
             c.decompress(b'')
 
+        # name
+        self.assertIn('.ZstdCompressor', str(type(c)))
+
         # doesn't support pickle
         with self.assertRaises(TypeError):
             pickle.dumps(c)
@@ -312,6 +315,9 @@ class ClassShapeTestCase(unittest.TestCase):
         with self.assertRaises(AttributeError):
             c.last_mode
 
+        # name
+        self.assertIn('.RichMemZstdCompressor', str(type(c)))
+
         # doesn't support pickle
         with self.assertRaises(TypeError):
             pickle.dumps(c)
@@ -335,6 +341,9 @@ class ClassShapeTestCase(unittest.TestCase):
         
         with self.assertRaises(AttributeError):
             d.compress(b'')
+
+        # name
+        self.assertIn('.ZstdDecompressor', str(type(d)))
 
         # doesn't support pickle
         with self.assertRaises(TypeError):
