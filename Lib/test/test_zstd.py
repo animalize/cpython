@@ -17,7 +17,7 @@ from test.support.os_helper import (
 )
 
 zstd = import_module("zstd")
-from zstd import ZstdCompressor, ZstdDecompressor, ZstdError, \
+from zstd import ZstdCompressor, RichMemZstdCompressor, ZstdDecompressor, ZstdError, \
                  CParameter, DParameter, Strategy, compress, decompress
 
 COMPRESSED_DAT = compress(b'abcdefg123456' * 1000)
@@ -270,13 +270,84 @@ class DecompressorFlagsTestCase(unittest.TestCase):
         self.assertTrue(d.needs_input)
 
 
-# # Test data:
+class ClassShapeTestCase(unittest.TestCase):
 
+    def test_ZstdCompressor(self):
+        # class attributes
+        ZstdCompressor.CONTINUE
+        ZstdCompressor.FLUSH_BLOCK
+        ZstdCompressor.FLUSH_FRAME
+
+        # method & member
+        c = ZstdCompressor()
+        c.compress(b'123456')
+        c.flush()
+        c.last_mode
+        
+        with self.assertRaises(AttributeError):
+            c.decompress(b'')
+
+        # doesn't support pickle
+        with self.assertRaises(TypeError):
+            pickle.dumps(c)
+
+    def test_RichMemZstdCompressor(self):
+        # class attributes
+        with self.assertRaises(AttributeError):
+            RichMemZstdCompressor.CONTINUE
+
+        with self.assertRaises(AttributeError):
+            RichMemZstdCompressor.FLUSH_BLOCK
+
+        with self.assertRaises(AttributeError):
+            RichMemZstdCompressor.FLUSH_FRAME
+
+        # method & member
+        c = RichMemZstdCompressor()
+        c.compress(b'123456')
+
+        with self.assertRaises(AttributeError):
+            c.flush()
+
+        with self.assertRaises(AttributeError):
+            c.last_mode
+
+        # doesn't support pickle
+        with self.assertRaises(TypeError):
+            pickle.dumps(c)
+
+    def test_Decompressor(self):
+        # class attributes
+        with self.assertRaises(AttributeError):
+            ZstdDecompressor.CONTINUE
+
+        with self.assertRaises(AttributeError):
+            ZstdDecompressor.FLUSH_BLOCK
+
+        with self.assertRaises(AttributeError):
+            ZstdDecompressor.FLUSH_FRAME
+
+        # method & member
+        d = ZstdDecompressor()
+        d.decompress(b'')
+        d.needs_input
+        d.at_frame_edge
+        
+        with self.assertRaises(AttributeError):
+            d.compress(b'')
+
+        # doesn't support pickle
+        with self.assertRaises(TypeError):
+            pickle.dumps(d)
+
+
+# # Test data:
 
 def test_main():
     run_unittest(
         CompressorDecompressorTestCase,
         DecompressorFlagsTestCase,
+        ClassShapeTestCase,
     )
 
 if __name__ == "__main__":
