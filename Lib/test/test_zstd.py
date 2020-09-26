@@ -18,7 +18,7 @@ from test.support.os_helper import (
 
 zstd = import_module("zstd")
 from zstd import ZstdCompressor, RichMemZstdCompressor, ZstdDecompressor, ZstdError, \
-                 CParameter, DParameter, Strategy, compress, decompress
+                 CParameter, DParameter, Strategy, compress, decompress, ZstdDict
 
 COMPRESSED_DAT = compress(b'abcdefg123456' * 1000)
 DAT_100_PLUS_32KB = compress(b'a' * (100 + 32*1024))
@@ -294,6 +294,11 @@ class ClassShapeTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             pickle.dumps(c)
 
+        # doesn't support subclass
+        with self.assertRaises(TypeError):
+            class SubClass(ZstdCompressor):
+                pass
+
     def test_RichMemZstdCompressor(self):
         # class attributes
         with self.assertRaises(AttributeError):
@@ -309,6 +314,9 @@ class ClassShapeTestCase(unittest.TestCase):
         c = RichMemZstdCompressor()
         c.compress(b'123456')
 
+        with self.assertRaises(TypeError):
+            c.compress(b'123456', ZstdCompressor.FLUSH_FRAME)
+
         with self.assertRaises(AttributeError):
             c.flush()
 
@@ -321,6 +329,11 @@ class ClassShapeTestCase(unittest.TestCase):
         # doesn't support pickle
         with self.assertRaises(TypeError):
             pickle.dumps(c)
+
+        # doesn't support subclass
+        with self.assertRaises(TypeError):
+            class SubClass(RichMemZstdCompressor):
+                pass
 
     def test_Decompressor(self):
         # class attributes
@@ -349,8 +362,27 @@ class ClassShapeTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             pickle.dumps(d)
 
+        # doesn't support subclass
+        with self.assertRaises(TypeError):
+            class SubClass(ZstdDecompressor):
+                pass
 
-# # Test data:
+    def test_ZstdDict(self):
+        zd = ZstdDict(b'12345678')
+        self.assertEqual(type(zd.dict_content), bytes)
+        self.assertEqual(zd.dict_id, 0)
+
+        # name
+        self.assertIn('.ZstdDict', str(type(zd)))
+
+        # doesn't support pickle
+        with self.assertRaises(TypeError):
+            pickle.dumps(zd)
+
+        # supports subclass
+        class SubClass(ZstdDict):
+            pass
+
 
 def test_main():
     run_unittest(
