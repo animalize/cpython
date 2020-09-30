@@ -59,7 +59,7 @@ class FunctionsTestCase(unittest.TestCase):
     def test_get_frame_size(self):
         size = get_frame_size(DAT_100_PLUS_32KB)
 
-        self.assertGreater(size, 0)
+        self.assertEqual(size, len(DAT_100_PLUS_32KB))
 
 
 class ClassShapeTestCase(unittest.TestCase):
@@ -200,6 +200,10 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         self.assertRaises(TypeError, ZstdCompressor, zstd_dict=b'abc')
         self.assertRaises(TypeError, ZstdCompressor, zstd_dict={1:2, 3:4})
 
+        self.assertRaises(TypeError, ZstdCompressor, rich_mem='8GB')
+        self.assertRaises(TypeError, ZstdCompressor, rich_mem=None)
+        self.assertRaises(TypeError, ZstdCompressor, rich_mem={1:2})
+
         with self.assertRaises(ValueError):
             ZstdCompressor(2**31)
         with self.assertRaises(ValueError):
@@ -245,6 +249,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
 
     def test_compress_parameters(self):
         d = {CParameter.compressionLevel : 10,
+
              CParameter.windowLog : 12,
              CParameter.hashLog : 10,
              CParameter.chainLog : 12,
@@ -252,14 +257,20 @@ class CompressorDecompressorTestCase(unittest.TestCase):
              CParameter.minMatch : 4,
              CParameter.targetLength : 12,
              CParameter.strategy : Strategy.lazy,
+
              CParameter.enableLongDistanceMatching : 1,
              CParameter.ldmHashLog : 12,
              CParameter.ldmMinMatch : 11,
              CParameter.ldmBucketSizeLog : 5,
              CParameter.ldmHashRateLog : 12,
+
              CParameter.contentSizeFlag : 1,
              CParameter.checksumFlag : 1,
              CParameter.dictIDFlag : 0,
+
+             CParameter.nbWorkers : 0,
+             CParameter.jobSize : 50_000,
+             CParameter.overlapLog : 9,
              }
         ZstdCompressor(level_or_option=d)
 
@@ -286,6 +297,20 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         d2 = d.copy()
         d2[DParameter.windowLogMax] = 32
         self.assertRaises(ZstdError, ZstdDecompressor, None, d2)
+
+    def test_zstd_multithread_compress(self):
+        b = b'test_multithread_123456' * 1_000_000
+
+        dat1 = compress(b, {CParameter.nbWorkers : 2})
+        dat2 = decompress(dat1)
+        self.assertEqual(dat2, b)
+
+    def test_rich_mem_compress(self):
+        b = b'test_rich_mem_123456' * 5_000
+
+        dat1 = compress(b, rich_mem=True)
+        dat2 = decompress(dat1)
+        self.assertEqual(dat2, b)
 
 
 class DecompressorFlagsTestCase(unittest.TestCase):
