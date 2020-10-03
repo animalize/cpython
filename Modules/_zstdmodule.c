@@ -1329,13 +1329,6 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
     if (rich_mem) {
         /* Calculate output buffer's size */
         size_t output_buffer_size = ZSTD_compressBound(in.size);
-#if defined(_MSC_VER) && (ZSTD_VERSION_NUMBER < 10406)
-        /* When compiled with MSVC, ZSTD_compressBound() is slower than
-           ZSTD_compressBound()-1 a lot. The reason is an inline function
-           is not expanded as expected. */
-        output_buffer_size -= 1;
-#endif
-
         if (output_buffer_size > (size_t) PY_SSIZE_T_MAX) {
             PyErr_NoMemory();
             return NULL;
@@ -1635,11 +1628,12 @@ _zstd_RichMemZstdCompressor_compress_impl(ZstdCompressor *self,
 /*[clinic end generated code: output=dcef59dcce6ee3a2 input=ddcd96af137b75f6]*/
 {
     PyObject *ret;
+    int rich_mem = (self->zstd_multi_threading == 0);
 
     /* Thread-safe code */
     ACQUIRE_LOCK(self);
 
-    ret = compress_impl(self, data, ZSTD_e_end, 1);
+    ret = compress_impl(self, data, ZSTD_e_end, rich_mem);
     if (ret == NULL) {
         /* Resetting cctx's session never fail */
         ZSTD_CCtx_reset(self->cctx, ZSTD_reset_session_only);
