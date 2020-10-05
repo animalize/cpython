@@ -145,15 +145,13 @@ def train_dict(samples, dict_size):
     """
     chunks = []
     chunk_sizes = []
-
     for chunk in samples:
         chunks.append(chunk)
         chunk_sizes.append(len(chunk))
 
+    chunks = b''.join(chunks)
     if not chunks:
         raise ValueError("The chunks is empty content, can't train dictionary.")
-
-    chunks = b''.join(chunks)
 
     # chunks: samples be stored concatenated in a single flat buffer.
     # chunk_sizes: a list of each sample's size.
@@ -189,15 +187,13 @@ def finalize_dict(zstd_dict, samples, dict_size, level):
 
     chunks = []
     chunk_sizes = []
-
     for chunk in samples:
         chunks.append(chunk)
         chunk_sizes.append(len(chunk))
 
+    chunks = b''.join(chunks)
     if not chunks:
         raise ValueError("The chunks is empty content, can't train dictionary.")
-
-    chunks = b''.join(chunks)
 
     # zstd_dict: existing dictionary.
     # chunks: samples be stored concatenated in a single flat buffer.
