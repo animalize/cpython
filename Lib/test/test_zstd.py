@@ -645,6 +645,71 @@ class FileTestCase(unittest.TestCase):
             ZstdFile(BytesIO(DAT_100_PLUS_32KB), zstd_dict=b'dict123456')
 
 
+    def test_close(self):
+        with BytesIO(DAT_100_PLUS_32KB) as src:
+            f = ZstdFile(src)
+            f.close()
+            # ZstdFile.close() should not close the underlying file object.
+            self.assertFalse(src.closed)
+            # Try closing an already-closed ZstdFile.
+            f.close()
+            self.assertFalse(src.closed)
+
+        # Test with a real file on disk, opened directly by LZMAFile.
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_f:
+            filename = pathlib.Path(tmp_f.name)
+
+        f = ZstdFile(filename)
+        fp = f._fp
+        f.close()
+        # Here, ZstdFile.close() *should* close the underlying file object.
+        self.assertTrue(fp.closed)
+        # Try closing an already-closed ZstdFile.
+        f.close()
+
+        os.remove(filename)
+
+    def test_closed(self):
+        f = ZstdFile(BytesIO(DAT_100_PLUS_32KB))
+        try:
+            self.assertFalse(f.closed)
+            f.read()
+            self.assertFalse(f.closed)
+        finally:
+            f.close()
+        self.assertTrue(f.closed)
+
+        f = ZstdFile(BytesIO(), "w")
+        try:
+            self.assertFalse(f.closed)
+        finally:
+            f.close()
+        self.assertTrue(f.closed)
+
+    def test_fileno(self):
+        # 1
+        f = ZstdFile(BytesIO(DAT_100_PLUS_32KB))
+        try:
+            self.assertRaises(UnsupportedOperation, f.fileno)
+        finally:
+            f.close()
+        self.assertRaises(ValueError, f.fileno)
+
+        # 2
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_f:
+            filename = pathlib.Path(tmp_f.name)
+
+        f = ZstdFile(filename)
+        try:
+            self.assertEqual(f.fileno(), f._fp.fileno())
+            self.assertIsInstance(f.fileno(), int)
+        finally:
+            f.close()
+        self.assertRaises(ValueError, f.fileno)
+
+        os.remove(filename)
+
+
 def test_main():
     run_unittest(
         FunctionsTestCase,
