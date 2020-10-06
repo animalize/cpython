@@ -10,6 +10,7 @@ __all__ = ('compress', 'richmem_compress', 'decompress',
 import builtins
 import enum
 import io
+import sys
 import os
 import _compression
 from collections import namedtuple
@@ -248,6 +249,18 @@ class EndlessDecompressReader(_compression.DecompressReader):
         self._pos += len(data)
         return data
 
+    def readall(self):
+        chunks = []
+        while True:
+            # sys.maxsize means that the max length of output buffer is
+            # unlimited, so that the whole input buffer can be decompressed
+            # within one .decompress() call.
+            data = self.read(sys.maxsize)
+            if not data:
+                break
+            chunks.append(data)
+        return b''.join(chunks)
+        
 
 _MODE_CLOSED   = 0
 _MODE_READ     = 1
