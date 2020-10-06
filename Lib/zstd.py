@@ -2,7 +2,7 @@
 __all__ = ('compress', 'richmem_compress', 'decompress',
            'train_dict', 'finalize_dict',
            'ZstdCompressor', 'RichMemZstdCompressor', 'ZstdDecompressor',
-           'ZstdDict', 'ZstdError', 'ZstdFile', 'zstd_open',
+           'ZstdDict', 'ZstdError', 'ZstdFile', 'open',
            'CParameter', 'DParameter', 'Strategy',
            'get_frame_info', 'get_frame_size',
            'zstd_version', 'zstd_version_info', 'compressionLevel_values')
@@ -441,10 +441,18 @@ class ZstdFile(_compression.BaseStream):
         return self._pos
 
 
-def zstd_open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
+def open(filename, mode="rb", *, level_or_option=None, zstd_dict=None,
          encoding=None, errors=None, newline=None):
-    if "t" in mode and "b" in mode:
-        raise ValueError("Invalid mode: %r" % (mode,))
+    if "t" in mode:
+        if "b" in mode:
+            raise ValueError("Invalid mode: %r" % (mode,))
+    else:
+        if encoding is not None:
+            raise ValueError("Argument 'encoding' not supported in binary mode")
+        if errors is not None:
+            raise ValueError("Argument 'errors' not supported in binary mode")
+        if newline is not None:
+            raise ValueError("Argument 'newline' not supported in binary mode")
 
     zstd_mode = mode.replace("t", "")
     binary_file = ZstdFile(filename, zstd_mode,
