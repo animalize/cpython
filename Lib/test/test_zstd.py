@@ -184,7 +184,7 @@ class ClassShapeTestCase(unittest.TestCase):
                 pass
 
     def test_ZstdDict(self):
-        zd = ZstdDict(b'12345678')
+        zd = ZstdDict(b'12345678', True)
         self.assertEqual(type(zd.dict_content), bytes)
         self.assertEqual(zd.dict_id, 0)
 
@@ -620,10 +620,14 @@ class DecompressorFlagsTestCase(unittest.TestCase):
 
 class ZstdDictTestCase(unittest.TestCase):
 
-    def test_dict(self):
+    def test_is_raw_1(self):
         b = b'12345678abcd'
-        zd = ZstdDict(b)
-        self.assertEqual(zd.dict_content, b)
+        with self.assertRaises(ValueError):
+            zd = ZstdDict(b)
+
+    def test_is_raw_2(self):
+        b = b'12345678abcd'
+        zd = ZstdDict(b, is_raw=True)
         self.assertEqual(zd.dict_id, 0)
 
         # read only attributes
@@ -638,6 +642,7 @@ class ZstdDictTestCase(unittest.TestCase):
 
         global TRAINED_DICT
         TRAINED_DICT = zstd.train_dict(SAMPLES, DICT_SIZE1)
+        temp_dict = ZstdDict(TRAINED_DICT.dict_content, False)
 
         self.assertNotEqual(TRAINED_DICT.dict_id, 0)
         self.assertGreater(len(TRAINED_DICT.dict_content), 0)
