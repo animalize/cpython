@@ -250,8 +250,19 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         self.assertRaises(TypeError, zc.compress, b"foo", b"bar")
         self.assertRaises(TypeError, zc.compress, "str")
         self.assertRaises(TypeError, zc.flush, b"blah", 1)
-        self.assertRaises(ValueError, zc.compress, b"foo", 3)
+
+        self.assertRaises(ValueError, zc.compress, b'', -1)
+        self.assertRaises(ValueError, zc.compress, b'', 3)
+        self.assertRaises(ValueError, zc.flush, zc.CONTINUE) # 0
+        self.assertRaises(ValueError, zc.flush, 3)
+        
+        zc.compress(b'')
+        zc.compress(b'', zc.CONTINUE)
+        zc.compress(b'', zc.FLUSH_BLOCK)
+        zc.compress(b'', zc.FLUSH_FRAME)
         empty = zc.flush()
+        zc.flush(zc.FLUSH_BLOCK)
+        zc.flush(zc.FLUSH_FRAME)
 
         lzd = ZstdDecompressor()
         self.assertRaises(TypeError, lzd.decompress)
