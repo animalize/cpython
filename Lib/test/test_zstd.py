@@ -792,12 +792,13 @@ class FileTestCase(unittest.TestCase):
 
         # doesn't raise ZstdError, due to:
         # (DParameter.windowLogMax == CParameter.compressionLevel == 100)
-        ZstdFile(BytesIO(), "w", 
-                 level_or_option={DParameter.windowLogMax:compressionLevel_values.max})
+        if DParameter.windowLogMax == CParameter.compressionLevel:
+            ZstdFile(BytesIO(), "w", 
+                     level_or_option={DParameter.windowLogMax:compressionLevel_values.max})
 
-        with self.assertWarns(RuntimeWarning):
-            ZstdFile(BytesIO(), "w",
-                     level_or_option={DParameter.windowLogMax:compressionLevel_values.max+1})
+            with self.assertWarns(RuntimeWarning):
+                ZstdFile(BytesIO(), "w",
+                         level_or_option={DParameter.windowLogMax:compressionLevel_values.max+1})
 
         with self.assertRaises(TypeError):
             ZstdFile(BytesIO(DAT_100_PLUS_32KB), "r", level_or_option=12)
