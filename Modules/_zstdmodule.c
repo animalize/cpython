@@ -993,17 +993,31 @@ set_c_parameters(ZstdCompressor *self,
 
     /* Integer compression level */
     if (PyLong_Check(level_or_option)) {
-        *compress_level = _PyLong_AsInt(level_or_option);
-        if (*compress_level == -1 && PyErr_Occurred()) {
+        const int level = _PyLong_AsInt(level_or_option);
+        if (level == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError,
                             "Compress level should be 32-bit signed int value.");
             return -1;
         }
 
+        /* Save to *compress_level */
+        *compress_level = level;
+
+        /* Check compressionLevel bounds */
+        if (level > ZSTD_maxCLevel() || level < ZSTD_minCLevel()) {
+            PyOS_snprintf(msg_buf, sizeof(msg_buf),
+                          "The compression level argument should %d <= value <= %d, "
+                          "provided value is %d.",
+                          ZSTD_minCLevel(), ZSTD_maxCLevel(), level);
+            if (PyErr_WarnEx(PyExc_RuntimeWarning, msg_buf, 1) < 0) {
+                return -1;
+            }
+        }
+
         /* Set compressionLevel to compress context */
         zstd_ret = ZSTD_CCtx_setParameter(self->cctx,
                                           ZSTD_c_compressionLevel,
-                                          *compress_level);
+                                          level);
 
         /* Check error */
         if (ZSTD_isError(zstd_ret)) {
@@ -1040,6 +1054,17 @@ set_c_parameters(ZstdCompressor *self,
             if (key_v == ZSTD_c_compressionLevel) {
                 /* Get compressionLevel for generating ZSTD_CDICT */
                 *compress_level = value_v;
+
+                /* Check compressionLevel bounds */
+                if (value_v > ZSTD_maxCLevel() || value_v < ZSTD_minCLevel()) {
+                    PyOS_snprintf(msg_buf, sizeof(msg_buf),
+                                  "The \"compressionLevel\" compress parameter "
+                                  "should %d <= value <= %d, provided value is %d.",
+                                  ZSTD_minCLevel(), ZSTD_maxCLevel(), value_v);
+                    if (PyErr_WarnEx(PyExc_RuntimeWarning, msg_buf, 1) < 0) {
+                        return -1;
+                    }
+                }
             } else if (key_v == ZSTD_c_nbWorkers) {
                 /* From zstd library doc:
                    1. When nbWorkers >= 1, triggers asynchronous mode when

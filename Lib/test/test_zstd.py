@@ -296,6 +296,17 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         d2[CParameter.ldmBucketSizeLog] = 10
         self.assertRaises(ZstdError, ZstdCompressor, d2)
 
+        # compressionLevel out of bounds
+        with self.assertWarns(RuntimeWarning):
+            compress(b'', compressionLevel_values.max+1)
+        with self.assertWarns(RuntimeWarning):
+            compress(b'', compressionLevel_values.min-1)
+
+        with self.assertWarns(RuntimeWarning):
+            compress(b'', {CParameter.compressionLevel:compressionLevel_values.max+1})
+        with self.assertWarns(RuntimeWarning):
+            compress(b'', {CParameter.compressionLevel:compressionLevel_values.min-1})
+
     def test_decompress_parameters(self):
         d = {DParameter.windowLogMax : 15}
         ZstdDecompressor(option=d)
@@ -781,7 +792,12 @@ class FileTestCase(unittest.TestCase):
 
         # doesn't raise ZstdError, due to:
         # (DParameter.windowLogMax == CParameter.compressionLevel == 100)
-        ZstdFile(BytesIO(), "w", level_or_option={DParameter.windowLogMax:25})
+        ZstdFile(BytesIO(), "w", 
+                 level_or_option={DParameter.windowLogMax:compressionLevel_values.max})
+
+        with self.assertWarns(RuntimeWarning):
+            ZstdFile(BytesIO(), "w",
+                     level_or_option={DParameter.windowLogMax:compressionLevel_values.max+1})
 
         with self.assertRaises(TypeError):
             ZstdFile(BytesIO(DAT_100_PLUS_32KB), "r", level_or_option=12)
