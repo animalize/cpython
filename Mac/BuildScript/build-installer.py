@@ -272,6 +272,15 @@ def library_recipes():
         ])
 
     result.extend([
+      dict(
+          name="zstd 1.4.5",
+          url="https://github.com/facebook/zstd/releases/download/v1.4.5/zstd-1.4.5.tar.gz",
+          checksum='dd0b53631303b8f972dafa6fd34beb0c',
+          extra_cflags=('-DZSTD_MULTITHREAD')
+          ),
+    ])
+
+    result.extend([
           dict(
               name="NCurses 5.9",
               url="http://ftp.gnu.org/pub/gnu/ncurses/ncurses-5.9.tar.gz",
