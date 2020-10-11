@@ -276,6 +276,7 @@ def library_recipes():
           name="zstd 1.4.5",
           url="https://github.com/facebook/zstd/releases/download/v1.4.5/zstd-1.4.5.tar.gz",
           checksum='dd0b53631303b8f972dafa6fd34beb0c',
+          buildDir='zstd-1.4.5/lib',
           extra_cflags=('-DZSTD_MULTITHREAD')
           ),
     ])

@@ -410,7 +410,7 @@ static const ParameterInfo dp_list[] =
 
 
 /* Format an user friendly error message. */
-static inline void
+static void
 get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
                         int key_v, int value_v, char is_compress)
 {
@@ -465,8 +465,11 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
     /* Error message */
     PyOS_snprintf(buf, buf_size,
                   "Error when setting zstd %s parameter \"%s\", it "
-                  "should %d <= value <= %d, provided value is %d.",
-                  type, name, bounds.lowerBound, bounds.upperBound, value_v);
+                  "should %d <= value <= %d, provided value is %d. "
+                  "(zstd v%s, %d-bit build)",
+                  type, name,
+                  bounds.lowerBound, bounds.upperBound, value_v,
+                  ZSTD_versionString(), sizeof(Py_ssize_t)*8);
 }
 
 
@@ -815,6 +818,12 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     size_t zstd_ret;
 
     /* Prepare chunk_sizes */
+    if (!PyList_Check(dst_data_sizes)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "dst_data_sizes argument should be a list.");
+        goto error;
+    }
+
     const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
     if (chunks_number > UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError,
@@ -832,6 +841,9 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
         PyObject *size = PyList_GET_ITEM(dst_data_sizes, i);
         chunk_sizes[i] = PyLong_AsSize_t(size);
         if (chunk_sizes[i] == (size_t)-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                            "Items in dst_data_sizes list should be int "
+                            "object, with a size_t value.");
             goto error;
         }
     }
@@ -906,6 +918,12 @@ _zstd__finalize_dict_impl(PyObject *module, PyBytesObject *custom_dict,
     ZDICT_params_t params;
 
     /* Prepare chunk_sizes */
+    if (!PyList_Check(dst_data_sizes)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "dst_data_sizes argument should be a list.");
+        goto error;
+    }
+
     const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
     if (chunks_number > UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError,
@@ -923,6 +941,9 @@ _zstd__finalize_dict_impl(PyObject *module, PyBytesObject *custom_dict,
         PyObject *size = PyList_GET_ITEM(dst_data_sizes, i);
         chunk_sizes[i] = PyLong_AsSize_t(size);
         if (chunk_sizes[i] == (size_t)-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                            "Items in dst_data_sizes list should be int "
+                            "object, with a size_t value.");
             goto error;
         }
     }
@@ -980,6 +1001,25 @@ error:
      Set parameters / load dictionary
    ----------------------------------- */
 
+static int
+check_level_bounds(int compressionLevel, char* buf, int buf_size)
+{
+    assert(buf_size >= 120);
+
+    if (compressionLevel > ZSTD_maxCLevel() || compressionLevel < ZSTD_minCLevel()) {
+        PyOS_snprintf(buf, buf_size,
+                      "In zstd v%s, the compression level parameter should %d "
+                      "<= value <= %d, provided value is %d, it will be clamped.",
+                      ZSTD_versionString(), ZSTD_minCLevel(),
+                      ZSTD_maxCLevel(), compressionLevel);
+
+        if (PyErr_WarnEx(PyExc_RuntimeWarning, buf, 1) < 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 /* Set compressLevel or compress parameters to compress context. */
 static int
 set_c_parameters(ZstdCompressor *self,
@@ -1000,18 +1040,12 @@ set_c_parameters(ZstdCompressor *self,
             return -1;
         }
 
-        /* Save to *compress_level */
+        /* Save to *compress_level for generating ZSTD_CDICT */
         *compress_level = level;
 
         /* Check compressionLevel bounds */
-        if (level > ZSTD_maxCLevel() || level < ZSTD_minCLevel()) {
-            PyOS_snprintf(msg_buf, sizeof(msg_buf),
-                          "The compression level argument should %d <= value <= %d, "
-                          "provided value is %d.",
-                          ZSTD_minCLevel(), ZSTD_maxCLevel(), level);
-            if (PyErr_WarnEx(PyExc_RuntimeWarning, msg_buf, 1) < 0) {
-                return -1;
-            }
+        if (check_level_bounds(level, msg_buf, sizeof(msg_buf)) < 0) {
+            return -1;
         }
 
         /* Set compressionLevel to compress context */
@@ -1052,18 +1086,12 @@ set_c_parameters(ZstdCompressor *self,
             }
 
             if (key_v == ZSTD_c_compressionLevel) {
-                /* Get compressionLevel for generating ZSTD_CDICT */
+                /* Save to *compress_level for generating ZSTD_CDICT */
                 *compress_level = value_v;
 
                 /* Check compressionLevel bounds */
-                if (value_v > ZSTD_maxCLevel() || value_v < ZSTD_minCLevel()) {
-                    PyOS_snprintf(msg_buf, sizeof(msg_buf),
-                                  "The \"compressionLevel\" compress parameter "
-                                  "should %d <= value <= %d, provided value is %d.",
-                                  ZSTD_minCLevel(), ZSTD_maxCLevel(), value_v);
-                    if (PyErr_WarnEx(PyExc_RuntimeWarning, msg_buf, 1) < 0) {
-                        return -1;
-                    }
+                if (check_level_bounds(value_v, msg_buf, sizeof(msg_buf)) < 0) {
+                    return -1;
                 }
             } else if (key_v == ZSTD_c_nbWorkers) {
                 /* From zstd library doc:

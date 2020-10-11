@@ -250,8 +250,19 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         self.assertRaises(TypeError, zc.compress, b"foo", b"bar")
         self.assertRaises(TypeError, zc.compress, "str")
         self.assertRaises(TypeError, zc.flush, b"blah", 1)
-        self.assertRaises(ValueError, zc.compress, b"foo", 3)
+
+        self.assertRaises(ValueError, zc.compress, b'', -1)
+        self.assertRaises(ValueError, zc.compress, b'', 3)
+        self.assertRaises(ValueError, zc.flush, zc.CONTINUE) # 0
+        self.assertRaises(ValueError, zc.flush, 3)
+        
+        zc.compress(b'')
+        zc.compress(b'', zc.CONTINUE)
+        zc.compress(b'', zc.FLUSH_BLOCK)
+        zc.compress(b'', zc.FLUSH_FRAME)
         empty = zc.flush()
+        zc.flush(zc.FLUSH_BLOCK)
+        zc.flush(zc.FLUSH_FRAME)
 
         lzd = ZstdDecompressor()
         self.assertRaises(TypeError, lzd.decompress)
@@ -792,12 +803,13 @@ class FileTestCase(unittest.TestCase):
 
         # doesn't raise ZstdError, due to:
         # (DParameter.windowLogMax == CParameter.compressionLevel == 100)
-        ZstdFile(BytesIO(), "w", 
-                 level_or_option={DParameter.windowLogMax:compressionLevel_values.max})
+        if DParameter.windowLogMax == CParameter.compressionLevel:
+            ZstdFile(BytesIO(), "w", 
+                     level_or_option={DParameter.windowLogMax:compressionLevel_values.max})
 
-        with self.assertWarns(RuntimeWarning):
-            ZstdFile(BytesIO(), "w",
-                     level_or_option={DParameter.windowLogMax:compressionLevel_values.max+1})
+            with self.assertWarns(RuntimeWarning):
+                ZstdFile(BytesIO(), "w",
+                         level_or_option={DParameter.windowLogMax:compressionLevel_values.max+1})
 
         with self.assertRaises(TypeError):
             ZstdFile(BytesIO(DAT_100_PLUS_32KB), "r", level_or_option=12)
