@@ -130,9 +130,7 @@ typedef struct {
 } BlocksOutputBuffer;
 
 
-/* Block size sequence. Some compressor/decompressor can't process large
-   buffer (>4GB), so the type is int. Below functions assume the type is int.
-*/
+/* Block size sequence. Below functions assume the type is int. */
 #define KB (1024)
 #define MB (1024*1024)
 static const int BUFFER_BLOCK_SIZE[] =

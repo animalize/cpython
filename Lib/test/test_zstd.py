@@ -1,5 +1,6 @@
 import _compression
 from io import BytesIO, UnsupportedOperation
+import re
 import os
 import pathlib
 import pickle
@@ -669,6 +670,8 @@ class ZstdDictTestCase(unittest.TestCase):
         self.assertNotEqual(TRAINED_DICT.dict_id, 0)
         self.assertGreater(len(TRAINED_DICT.dict_content), 0)
         self.assertLessEqual(len(TRAINED_DICT.dict_content), DICT_SIZE1)
+
+        self.assertTrue(re.match(r'^<ZstdDict dict_id=\d+ dict_size=\d+>$', str(TRAINED_DICT)))
 
         # compress/decompress
         for sample in SAMPLES:
