@@ -2395,7 +2395,7 @@ _zstd__get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
                         "Error when getting a frame's decompressed size, make "
                         "sure that frame_buffer argument starts from the "
                         "beginning of a frame and its size larger than the "
-                        "frame header (dozen bytes).");
+                        "frame header (6~18 bytes).");
         goto error;
     } else {
         unknown_content_size = 0;
