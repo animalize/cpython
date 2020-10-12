@@ -1,5 +1,6 @@
 import _compression
 from io import BytesIO, UnsupportedOperation
+import re
 import os
 import pathlib
 import pickle
@@ -62,7 +63,7 @@ class FunctionsTestCase(unittest.TestCase):
             dat1 = compress(raw_dat, level)
             dat2 = decompress(dat1)
             self.assertEqual(dat2, raw_dat)
-    
+
     def test_get_frame_info(self):
         info = get_frame_info(DAT_100_PLUS_32KB[:20])
 
@@ -84,11 +85,20 @@ class ClassShapeTestCase(unittest.TestCase):
         ZstdCompressor.FLUSH_FRAME
 
         # method & member
+        ZstdCompressor(12, TRAINED_DICT)
+        ZstdCompressor(level_or_option=12, zstd_dict=TRAINED_DICT)
         c = ZstdCompressor()
+
         c.compress(b'123456')
+        c.compress(b'123456', c.CONTINUE)
+        c.compress(data=b'123456', mode=c.CONTINUE)
+
         c.flush()
+        c.flush(c.FLUSH_FRAME)
+        c.flush(mode=c.FLUSH_FRAME)
+
         c.last_mode
-        
+
         with self.assertRaises(AttributeError):
             c.decompress(b'')
 
@@ -120,8 +130,12 @@ class ClassShapeTestCase(unittest.TestCase):
             RichMemZstdCompressor.FLUSH_FRAME
 
         # method & member
+        RichMemZstdCompressor(12, TRAINED_DICT)
+        RichMemZstdCompressor(level_or_option=12, zstd_dict=TRAINED_DICT)
         c = RichMemZstdCompressor()
+
         c.compress(b'123456')
+        c.compress(data=b'123456')
 
         with self.assertRaises(TypeError):
             c.compress(b'123456', ZstdCompressor.FLUSH_FRAME)
@@ -156,11 +170,17 @@ class ClassShapeTestCase(unittest.TestCase):
             ZstdDecompressor.FLUSH_FRAME
 
         # method & member
+        ZstdDecompressor(TRAINED_DICT, {})
+        ZstdDecompressor(zstd_dict=TRAINED_DICT, option={})
         d = ZstdDecompressor()
+
         d.decompress(b'')
+        d.decompress(b'', 100)
+        d.decompress(data=b'', max_length = 100)
+
         d.needs_input
         d.at_frame_edge
-        
+
         with self.assertRaises(AttributeError):
             d.compress(b'')
 
@@ -184,7 +204,9 @@ class ClassShapeTestCase(unittest.TestCase):
                 pass
 
     def test_ZstdDict(self):
-        zd = ZstdDict(b'12345678', True)
+        ZstdDict(b'12345678', True)
+        zd = ZstdDict(b'12345678', is_raw=True)
+
         self.assertEqual(type(zd.dict_content), bytes)
         self.assertEqual(zd.dict_id, 0)
 
@@ -198,6 +220,55 @@ class ClassShapeTestCase(unittest.TestCase):
         # supports subclass
         class SubClass(ZstdDict):
             pass
+
+    def test_Strategy(self):
+        # class attributes
+        Strategy.fast
+        Strategy.dfast
+        Strategy.greedy
+        Strategy.lazy
+        Strategy.lazy2
+        Strategy.btlazy2
+        Strategy.btopt
+        Strategy.btultra
+        Strategy.btultra2
+
+    def test_CParameter(self):
+        CParameter.compressionLevel
+        CParameter.windowLog
+        CParameter.hashLog
+        CParameter.chainLog
+        CParameter.searchLog
+        CParameter.minMatch
+        CParameter.targetLength
+        CParameter.strategy
+
+        CParameter.enableLongDistanceMatching
+        CParameter.ldmHashLog
+        CParameter.ldmMinMatch
+        CParameter.ldmBucketSizeLog
+        CParameter.ldmHashRateLog
+
+        CParameter.contentSizeFlag
+        CParameter.checksumFlag
+        CParameter.dictIDFlag
+
+        CParameter.nbWorkers
+        CParameter.jobSize
+        CParameter.overlapLog
+
+        t = CParameter.windowLog.bounds()
+        self.assertEqual(len(t), 2)
+        self.assertEqual(type(t[0]), int)
+        self.assertEqual(type(t[1]), int)
+
+    def test_DParameter(self):
+        DParameter.windowLogMax
+
+        t = DParameter.windowLogMax.bounds()
+        self.assertEqual(len(t), 2)
+        self.assertEqual(type(t[0]), int)
+        self.assertEqual(type(t[1]), int)
 
 
 class CompressorDecompressorTestCase(unittest.TestCase):
@@ -255,7 +326,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         self.assertRaises(ValueError, zc.compress, b'', 3)
         self.assertRaises(ValueError, zc.flush, zc.CONTINUE) # 0
         self.assertRaises(ValueError, zc.flush, 3)
-        
+
         zc.compress(b'')
         zc.compress(b'', zc.CONTINUE)
         zc.compress(b'', zc.FLUSH_BLOCK)
@@ -362,7 +433,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         dat = d.decompress(DAT_100_PLUS_32KB, 1)
         size = len(dat)
 
-        while True: 
+        while True:
             if not d.needs_input:
                 dat = d.decompress(b'', 1)
 
@@ -385,7 +456,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         dat = d.decompress(DAT_100_PLUS_32KB, 2)
         size = len(dat)
 
-        while True: 
+        while True:
             if not d.needs_input:
                 dat = d.decompress(b'', 2)
 
@@ -407,7 +478,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         bi = BytesIO(DAT_100_PLUS_32KB)
         size = 0
 
-        while True: 
+        while True:
             if d.needs_input:
                 in_dat = bi.read(3)
                 if not in_dat:
@@ -431,7 +502,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         bi = BytesIO(DAT_100_PLUS_32KB)
         size = 0
 
-        while True: 
+        while True:
             if d.needs_input:
                 in_dat = bi.read(3)
                 if not in_dat:
@@ -455,7 +526,7 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         bi = BytesIO(DAT_100_PLUS_32KB)
         size = 0
 
-        while True: 
+        while True:
             if d.needs_input:
                 in_dat = bi.read(1)
                 if not in_dat:
@@ -670,6 +741,8 @@ class ZstdDictTestCase(unittest.TestCase):
         self.assertGreater(len(TRAINED_DICT.dict_content), 0)
         self.assertLessEqual(len(TRAINED_DICT.dict_content), DICT_SIZE1)
 
+        self.assertTrue(re.match(r'^<ZstdDict dict_id=\d+ dict_size=\d+>$', str(TRAINED_DICT)))
+
         # compress/decompress
         for sample in SAMPLES:
             dat1 = compress(sample, zstd_dict=TRAINED_DICT)
@@ -739,7 +812,7 @@ class FileTestCase(unittest.TestCase):
     def test_init_with_filename(self):
         with tempfile.NamedTemporaryFile(delete=False) as tmp_f:
             filename = pathlib.Path(tmp_f.name)
-            
+
         with ZstdFile(filename) as f:
             pass
         with ZstdFile(filename, "w") as f:
@@ -768,7 +841,7 @@ class FileTestCase(unittest.TestCase):
     def test_init_with_x_mode(self):
         with tempfile.NamedTemporaryFile() as tmp_f:
             filename = pathlib.Path(tmp_f.name)
-            
+
         for mode in ("x", "xb"):
             with ZstdFile(filename, mode):
                 pass
@@ -804,7 +877,7 @@ class FileTestCase(unittest.TestCase):
         # doesn't raise ZstdError, due to:
         # (DParameter.windowLogMax == CParameter.compressionLevel == 100)
         if DParameter.windowLogMax == CParameter.compressionLevel:
-            ZstdFile(BytesIO(), "w", 
+            ZstdFile(BytesIO(), "w",
                      level_or_option={DParameter.windowLogMax:compressionLevel_values.max})
 
             with self.assertWarns(RuntimeWarning):
@@ -834,7 +907,7 @@ class FileTestCase(unittest.TestCase):
                              level_or_option={DParameter.windowLogMax:2**31})
 
         with self.assertRaises(ZstdError):
-            ZstdFile(BytesIO(DAT_100_PLUS_32KB), 
+            ZstdFile(BytesIO(DAT_100_PLUS_32KB),
                              level_or_option={444:333})
 
         with self.assertRaises(TypeError):
@@ -1193,7 +1266,7 @@ class FileTestCase(unittest.TestCase):
     def test_write_append(self):
         def comp(data):
             comp = ZstdCompressor()
-            return comp.compress(data) + comp.flush()  
+            return comp.compress(data) + comp.flush()
 
         part1 = THIS_FILE_BYTES[:1024]
         part2 = THIS_FILE_BYTES[1024:1536]
@@ -1222,7 +1295,7 @@ class FileTestCase(unittest.TestCase):
     def test_writelines(self):
         def comp(data):
             comp = ZstdCompressor()
-            return comp.compress(data) + comp.flush() 
+            return comp.compress(data) + comp.flush()
 
         with BytesIO(THIS_FILE_BYTES) as f:
             lines = f.readlines()
@@ -1263,7 +1336,7 @@ class FileTestCase(unittest.TestCase):
         with ZstdFile(BytesIO(DAT_100_PLUS_32KB * 2)) as f:
             f.read(len(DECOMPRESSED_DAT_100_PLUS_32KB) + 333)
             f.seek(737)
-            self.assertEqual(f.read(), 
+            self.assertEqual(f.read(),
               DECOMPRESSED_DAT_100_PLUS_32KB[737:] + DECOMPRESSED_DAT_100_PLUS_32KB)
 
     def test_seek_backward_relative_to_end(self):
@@ -1420,7 +1493,7 @@ class OpenTestCase(unittest.TestCase):
     def test_x_mode(self):
         with tempfile.NamedTemporaryFile(delete=False) as tmp_f:
             TESTFN = pathlib.Path(tmp_f.name)
-        
+
         for mode in ("x", "xb", "xt"):
             os.remove(TESTFN)
 

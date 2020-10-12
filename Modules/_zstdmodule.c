@@ -130,9 +130,7 @@ typedef struct {
 } BlocksOutputBuffer;
 
 
-/* Block size sequence. Some compressor/decompressor can't process large
-   buffer (>4GB), so the type is int. Below functions assume the type is int.
-*/
+/* Block size sequence. Below functions assume the type is int. */
 #define KB (1024)
 #define MB (1024*1024)
 static const int BUFFER_BLOCK_SIZE[] =
@@ -469,7 +467,7 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
                   "(zstd v%s, %d-bit build)",
                   type, name,
                   bounds.lowerBound, bounds.upperBound, value_v,
-                  ZSTD_versionString(), sizeof(Py_ssize_t)*8);
+                  ZSTD_versionString(), 8*(int)sizeof(Py_ssize_t));
 }
 
 
@@ -548,13 +546,12 @@ _get_CDict(ZstdDict *self, int compressionLevel)
     }
 
     /* Get PyCapsule object from self->c_dicts */
-    capsule = PyDict_GetItem(self->c_dicts, level);
+    capsule = PyDict_GetItemWithError(self->c_dicts, level);
+    if (capsule == NULL) {
+        if (PyErr_Occurred()) {
+            goto error;
+        }
 
-    if (capsule != NULL) {
-        /* ZSTD_CDict instance already exists */
-        cdict = PyCapsule_GetPointer(capsule, NULL);
-        goto success;
-    } else {
         /* Create ZSTD_CDict instance */
         Py_BEGIN_ALLOW_THREADS
         cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_content),
@@ -578,8 +575,11 @@ _get_CDict(ZstdDict *self, int compressionLevel)
             goto error;
         }
         Py_DECREF(capsule);
-        goto success;
+    } else {
+        /* ZSTD_CDict instance already exists */
+        cdict = PyCapsule_GetPointer(capsule, NULL);
     }
+    goto success;
 
 error:
     cdict = NULL;
@@ -1928,8 +1928,7 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
 }
 
 static inline PyObject *
-decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
-                Py_buffer *data, Py_ssize_t max_length)
+decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in, Py_ssize_t max_length)
 {
     size_t zstd_ret;
     ZSTD_outBuffer out;
@@ -2116,7 +2115,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     assert(in.pos == 0);
 
     /* Decompress */
-    ret = decompress_impl(self, &in, data, max_length);
+    ret = decompress_impl(self, &in, max_length);
     if (ret == NULL) {
         goto error;
     }
@@ -2396,7 +2395,7 @@ _zstd__get_frame_info_impl(PyObject *module, Py_buffer *frame_buffer)
                         "Error when getting a frame's decompressed size, make "
                         "sure that frame_buffer argument starts from the "
                         "beginning of a frame and its size larger than the "
-                        "frame header (dozen bytes).");
+                        "frame header (6~18 bytes).");
         goto error;
     } else {
         unknown_content_size = 0;
