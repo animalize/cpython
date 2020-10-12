@@ -1926,8 +1926,7 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
 }
 
 static inline PyObject *
-decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
-                Py_buffer *data, Py_ssize_t max_length)
+decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in, Py_ssize_t max_length)
 {
     size_t zstd_ret;
     ZSTD_outBuffer out;
@@ -2114,7 +2113,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     assert(in.pos == 0);
 
     /* Decompress */
-    ret = decompress_impl(self, &in, data, max_length);
+    ret = decompress_impl(self, &in, max_length);
     if (ret == NULL) {
         goto error;
     }
