@@ -546,13 +546,12 @@ _get_CDict(ZstdDict *self, int compressionLevel)
     }
 
     /* Get PyCapsule object from self->c_dicts */
-    capsule = PyDict_GetItem(self->c_dicts, level);
+    capsule = PyDict_GetItemWithError(self->c_dicts, level);
+    if (capsule == NULL) {
+        if (PyErr_Occurred()) {
+            goto error;
+        }
 
-    if (capsule != NULL) {
-        /* ZSTD_CDict instance already exists */
-        cdict = PyCapsule_GetPointer(capsule, NULL);
-        goto success;
-    } else {
         /* Create ZSTD_CDict instance */
         Py_BEGIN_ALLOW_THREADS
         cdict = ZSTD_createCDict(PyBytes_AS_STRING(self->dict_content),
@@ -576,8 +575,11 @@ _get_CDict(ZstdDict *self, int compressionLevel)
             goto error;
         }
         Py_DECREF(capsule);
-        goto success;
+    } else {
+        /* ZSTD_CDict instance already exists */
+        cdict = PyCapsule_GetPointer(capsule, NULL);
     }
+    goto success;
 
 error:
     cdict = NULL;
