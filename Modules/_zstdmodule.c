@@ -467,7 +467,7 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
                   "(zstd v%s, %d-bit build)",
                   type, name,
                   bounds.lowerBound, bounds.upperBound, value_v,
-                  ZSTD_versionString(), sizeof(Py_ssize_t)*8);
+                  ZSTD_versionString(), 8*(int)sizeof(Py_ssize_t));
 }
 
 

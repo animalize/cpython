@@ -221,6 +221,55 @@ class ClassShapeTestCase(unittest.TestCase):
         class SubClass(ZstdDict):
             pass
 
+    def test_Strategy(self):
+        # class attributes
+        Strategy.fast
+        Strategy.dfast
+        Strategy.greedy
+        Strategy.lazy
+        Strategy.lazy2
+        Strategy.btlazy2
+        Strategy.btopt
+        Strategy.btultra
+        Strategy.btultra2
+
+    def test_CParameter(self):
+        CParameter.compressionLevel
+        CParameter.windowLog
+        CParameter.hashLog
+        CParameter.chainLog
+        CParameter.searchLog
+        CParameter.minMatch
+        CParameter.targetLength
+        CParameter.strategy
+
+        CParameter.enableLongDistanceMatching
+        CParameter.ldmHashLog
+        CParameter.ldmMinMatch
+        CParameter.ldmBucketSizeLog
+        CParameter.ldmHashRateLog
+
+        CParameter.contentSizeFlag
+        CParameter.checksumFlag
+        CParameter.dictIDFlag
+
+        CParameter.nbWorkers
+        CParameter.jobSize
+        CParameter.overlapLog
+
+        t = CParameter.windowLog.bounds()
+        self.assertEqual(len(t), 2)
+        self.assertEqual(type(t[0]), int)
+        self.assertEqual(type(t[1]), int)
+
+    def test_DParameter(self):
+        DParameter.windowLogMax
+
+        t = DParameter.windowLogMax.bounds()
+        self.assertEqual(len(t), 2)
+        self.assertEqual(type(t[0]), int)
+        self.assertEqual(type(t[1]), int)
+
 
 class CompressorDecompressorTestCase(unittest.TestCase):
 
