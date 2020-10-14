@@ -2269,6 +2269,7 @@ _zstd__get_cparam_bounds_impl(PyObject *module, int cParam)
 /*[clinic end generated code: output=5b0f68046a6f0721 input=c7dd07c0298fdba3]*/
 {
     PyObject *ret;
+    PyObject *temp;
 
     ZSTD_bounds const bound = ZSTD_cParam_getBounds(cParam);
     if (ZSTD_isError(bound.error)) {
@@ -2283,8 +2284,19 @@ _zstd__get_cparam_bounds_impl(PyObject *module, int cParam)
         return NULL;
     }
 
-    PyTuple_SET_ITEM(ret, 0, PyLong_FromLong(bound.lowerBound));
-    PyTuple_SET_ITEM(ret, 1, PyLong_FromLong(bound.upperBound));
+    temp = PyLong_FromLong(bound.lowerBound);
+    if (temp == NULL) {
+        Py_DECREF(ret);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(ret, 0, temp);
+
+    temp = PyLong_FromLong(bound.upperBound);
+    if (temp == NULL) {
+        Py_DECREF(ret);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(ret, 1, temp);
 
     return ret;
 }
@@ -2302,6 +2314,7 @@ _zstd__get_dparam_bounds_impl(PyObject *module, int dParam)
 /*[clinic end generated code: output=6382b8e9779430c2 input=9749914e8f919d60]*/
 {
     PyObject *ret;
+    PyObject *temp;
 
     ZSTD_bounds const bound = ZSTD_dParam_getBounds(dParam);
     if (ZSTD_isError(bound.error)) {
@@ -2316,8 +2329,19 @@ _zstd__get_dparam_bounds_impl(PyObject *module, int dParam)
         return NULL;
     }
 
-    PyTuple_SET_ITEM(ret, 0, PyLong_FromLong(bound.lowerBound));
-    PyTuple_SET_ITEM(ret, 1, PyLong_FromLong(bound.upperBound));
+    temp = PyLong_FromLong(bound.lowerBound);
+    if (temp == NULL) {
+        Py_DECREF(ret);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(ret, 0, temp);
+
+    temp = PyLong_FromLong(bound.upperBound);
+    if (temp == NULL) {
+        Py_DECREF(ret);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(ret, 1, temp);
 
     return ret;
 }
