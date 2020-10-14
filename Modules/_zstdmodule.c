@@ -43,8 +43,8 @@ typedef struct {
     /* Thread lock for compressing */
     PyThread_type_lock lock;
 
-    /* Enabled zstd multi-threading compression, 0 or 1. */
-    char zstd_multi_threading;
+    /* Enabled zstd multi-threaded compression, 0 or 1. */
+    char zstd_multi_threaded;
 
     /* __init__ has been called, 0 or 1. */
     char inited;
@@ -1101,7 +1101,7 @@ set_c_parameters(ZstdCompressor *self,
                       worker is spawned, compression is performed inside
                       caller's thread, all invocations are blocking*/
                 if (value_v > 1) {
-                    self->zstd_multi_threading = 1;
+                    self->zstd_multi_threaded = 1;
                 } else if (value_v == 1) {
                     /* Use single-threaded mode */
                     value_v = 0;
@@ -1270,7 +1270,7 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     assert(self->dict == NULL);
-    assert(self->zstd_multi_threading == 0);
+    assert(self->zstd_multi_threaded == 0);
     assert(self->inited == 0);
 
     /* Compress context */
@@ -1556,7 +1556,7 @@ _zstd_ZstdCompressor_compress_impl(ZstdCompressor *self, Py_buffer *data,
     ACQUIRE_LOCK(self);
 
     /* Compress */
-    if (self->zstd_multi_threading && mode == ZSTD_e_continue) {
+    if (self->zstd_multi_threaded && mode == ZSTD_e_continue) {
         ret = compress_mt_continue_impl(self, data);
     } else {
         ret = compress_impl(self, data, mode, 0);
@@ -1720,9 +1720,9 @@ _zstd_RichMemZstdCompressor___init___impl(ZstdCompressor *self,
     }
 
     /* Check effective condition */
-    if (self->zstd_multi_threading) {
+    if (self->zstd_multi_threaded) {
         char *msg = "Currently \"rich memory mode\" has no effect on "
-                    "zstd multi-threading compression (set "
+                    "zstd multi-threaded compression (set "
                     "\"CParameter.nbWorkers\" > 1), it will allocate "
                     "unnecessary memory.";
         if (PyErr_WarnEx(PyExc_ResourceWarning, msg, 1) < 0) {
