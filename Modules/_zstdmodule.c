@@ -191,7 +191,7 @@ OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, block_size);
     if (b == NULL) {
-        buffer->list = NULL; /* For _BlocksOutputBuffer_OnError() */
+        buffer->list = NULL; /* For BlocksOutputBuffer_OnError() */
         PyErr_NoMemory();
         return -1;
     }
@@ -229,7 +229,7 @@ OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, Py_ssize_t init_size,
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, init_size);
     if (b == NULL) {
-        buffer->list = NULL; /* For _BlocksOutputBuffer_OnError() */
+        buffer->list = NULL; /* For BlocksOutputBuffer_OnError() */
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate output buffer.");
         return -1;
     }
@@ -964,7 +964,7 @@ _zstd__finalize_dict_impl(PyObject *module, PyBytesObject *custom_dict,
     /* Force dictID value, 0 means auto mode (32-bits random value). */
     params.dictID = 0;
 
-    /* Train the dictionary. */
+    /* Finalize the dictionary. */
     Py_BEGIN_ALLOW_THREADS
     zstd_ret = ZDICT_finalizeDictionary(PyBytes_AS_STRING(dict_buffer), dict_size,
                                         PyBytes_AS_STRING(custom_dict), Py_SIZE(custom_dict),
@@ -1592,7 +1592,7 @@ _zstd_ZstdCompressor_flush_impl(ZstdCompressor *self, int mode)
 /*[clinic end generated code: output=b7cf2c8d64dcf2e3 input=bc50737485d09fc5]*/
 {
     PyObject *ret;
-    
+
     /* Check mode value */
     if (mode != ZSTD_e_end && mode != ZSTD_e_flush) {
         PyErr_SetString(PyExc_ValueError,
