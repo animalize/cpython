@@ -191,7 +191,7 @@ OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, block_size);
     if (b == NULL) {
-        buffer->list = NULL; /* For _BlocksOutputBuffer_OnError() */
+        buffer->list = NULL; /* For BlocksOutputBuffer_OnError() */
         PyErr_NoMemory();
         return -1;
     }
@@ -229,7 +229,7 @@ OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, Py_ssize_t init_size,
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, init_size);
     if (b == NULL) {
-        buffer->list = NULL; /* For _BlocksOutputBuffer_OnError() */
+        buffer->list = NULL; /* For BlocksOutputBuffer_OnError() */
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate output buffer.");
         return -1;
     }
