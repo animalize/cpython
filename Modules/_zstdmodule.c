@@ -817,6 +817,12 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     PyObject *dict_buffer = NULL;
     size_t zstd_ret;
 
+    /* Check dict_size range */
+    if (dict_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "dict_size argument should be positive number.");
+        return NULL;
+    }
+
     /* Prepare chunk_sizes */
     if (!PyList_Check(dst_data_sizes)) {
         PyErr_SetString(PyExc_TypeError,
@@ -827,7 +833,7 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
     if (chunks_number > UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError,
-                        "Number of data chunks is too big, should <= 4294967295.");
+                        "The number of samples is too large.");
         goto error;
     }
 
@@ -917,6 +923,12 @@ _zstd__finalize_dict_impl(PyObject *module, PyBytesObject *custom_dict,
     size_t zstd_ret;
     ZDICT_params_t params;
 
+    /* Check dict_size range */
+    if (dict_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "dict_size argument should be positive number.");
+        return NULL;
+    }
+
     /* Prepare chunk_sizes */
     if (!PyList_Check(dst_data_sizes)) {
         PyErr_SetString(PyExc_TypeError,
@@ -927,7 +939,7 @@ _zstd__finalize_dict_impl(PyObject *module, PyBytesObject *custom_dict,
     const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
     if (chunks_number > UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError,
-                        "Number of data chunks is too big, should <= 4294967295.");
+                        "The number of samples is too large.");
         goto error;
     }
 
