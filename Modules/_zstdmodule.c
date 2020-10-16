@@ -817,6 +817,12 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     PyObject *dict_buffer = NULL;
     size_t zstd_ret;
 
+    /* Check dict_size range */
+    if (dict_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "dict_size argument should be positive number.");
+        return NULL;
+    }
+
     /* Prepare chunk_sizes */
     if (!PyList_Check(dst_data_sizes)) {
         PyErr_SetString(PyExc_TypeError,
@@ -916,6 +922,12 @@ _zstd__finalize_dict_impl(PyObject *module, PyBytesObject *custom_dict,
     PyObject *dict_buffer = NULL;
     size_t zstd_ret;
     ZDICT_params_t params;
+
+    /* Check dict_size range */
+    if (dict_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "dict_size argument should be positive number.");
+        return NULL;
+    }
 
     /* Prepare chunk_sizes */
     if (!PyList_Check(dst_data_sizes)) {
