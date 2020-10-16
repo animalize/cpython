@@ -607,7 +607,6 @@ _ZstdDict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     ZstdDict *self;
     self = (ZstdDict*)type->tp_alloc(type, 0);
     if (self == NULL) {
-        PyErr_NoMemory();
         goto error;
     }
 
@@ -1271,7 +1270,6 @@ _ZstdCompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     ZstdCompressor *self;
     self = (ZstdCompressor*)type->tp_alloc(type, 0);
     if (self == NULL) {
-        PyErr_NoMemory();
         goto error;
     }
 
@@ -1822,7 +1820,6 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     ZstdDecompressor *self;
     self = (ZstdDecompressor*)type->tp_alloc(type, 0);
     if (self == NULL) {
-        PyErr_NoMemory();
         goto error;
     }
 
