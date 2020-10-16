@@ -191,7 +191,7 @@ OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, block_size);
     if (b == NULL) {
-        buffer->list = NULL; /* For BlocksOutputBuffer_OnError() */
+        buffer->list = NULL; /* For OutputBuffer_OnError() */
         PyErr_NoMemory();
         return -1;
     }
@@ -229,7 +229,7 @@ OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, Py_ssize_t init_size,
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, init_size);
     if (b == NULL) {
-        buffer->list = NULL; /* For BlocksOutputBuffer_OnError() */
+        buffer->list = NULL; /* For OutputBuffer_OnError() */
         PyErr_SetString(PyExc_MemoryError, "Unable to allocate output buffer.");
         return -1;
     }
@@ -827,7 +827,7 @@ _zstd__train_dict_impl(PyObject *module, PyBytesObject *dst_data,
     const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
     if (chunks_number > UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError,
-                        "Number of data chunks is too big, should <= 4294967295.");
+                        "The number of samples is too large.");
         goto error;
     }
 
@@ -927,7 +927,7 @@ _zstd__finalize_dict_impl(PyObject *module, PyBytesObject *custom_dict,
     const Py_ssize_t chunks_number = Py_SIZE(dst_data_sizes);
     if (chunks_number > UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError,
-                        "Number of data chunks is too big, should <= 4294967295.");
+                        "The number of samples is too large.");
         goto error;
     }
 
