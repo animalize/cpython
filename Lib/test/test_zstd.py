@@ -658,24 +658,30 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         self.assertFalse(d.needs_input)
 
     def test_compress_flushblock(self):
+        point = len(THIS_FILE_BYTES) // 2
+
         c = ZstdCompressor()
-        dat1 = c.compress(DECOMPRESSED_DAT_100_PLUS_32KB, c.FLUSH_BLOCK)
+        dat1 = c.compress(THIS_FILE_BYTES[:point])
+        dat1 += c.compress(THIS_FILE_BYTES[point:], c.FLUSH_BLOCK)
 
         d = ZstdDecompressor()
         dat2 = d.decompress(dat1)
 
-        self.assertEqual(dat2, DECOMPRESSED_DAT_100_PLUS_32KB)
+        self.assertEqual(dat2, THIS_FILE_BYTES)
         self.assertFalse(d.at_frame_edge)
         self.assertTrue(d.needs_input)
 
     def test_compress_flushframe(self):
+        point = len(THIS_FILE_BYTES) // 2
+
         c = ZstdCompressor()
-        dat1 = c.compress(DECOMPRESSED_DAT_100_PLUS_32KB, c.FLUSH_FRAME)
+        dat1 = c.compress(THIS_FILE_BYTES[:point])
+        dat1 += c.compress(THIS_FILE_BYTES[point:], c.FLUSH_FRAME)
 
         d = ZstdDecompressor()
         dat2 = d.decompress(dat1)
 
-        self.assertEqual(dat2, DECOMPRESSED_DAT_100_PLUS_32KB)
+        self.assertEqual(dat2, THIS_FILE_BYTES)
         self.assertTrue(d.at_frame_edge)
         self.assertTrue(d.needs_input)
 
