@@ -457,6 +457,20 @@ get_parameter_error_msg(char *buf, int buf_size, Py_ssize_t pos,
         return;
     }
 
+#if ZSTD_VERSION_NUMBER < 10500
+    /* Multi-threaded compression not enabled */
+    if (bounds.upperBound == 0 &&
+        (key_v == ZSTD_c_nbWorkers ||
+         key_v == ZSTD_c_jobSize ||
+         key_v == ZSTD_c_overlapLog)) {
+        PyOS_snprintf(buf, buf_size,
+                      "The dynamic-linked zstd library does not support "
+                      "multi-threaded compression, it was compiled without "
+                      "multi-threaded compression support.");
+        return;
+    }
+#endif
+
     /* Error message */
     PyOS_snprintf(buf, buf_size,
                   "Error when setting zstd %s parameter \"%s\", it "
