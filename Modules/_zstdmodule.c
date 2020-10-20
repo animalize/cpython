@@ -331,8 +331,8 @@ OutputBuffer_Finish(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
     const Py_ssize_t list_len = Py_SIZE(buffer->list);
 
     /* Fast path for single block */
-    if ((ob->pos == ob->size && list_len == 1) ||
-        (ob->pos == 0 && list_len == 2)) {
+    if ((ob->pos == 0 && list_len == 2) ||
+        (ob->pos == ob->size && list_len == 1)) {
         block = PyList_GET_ITEM(buffer->list, 0);
         Py_INCREF(block);
 
