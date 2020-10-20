@@ -75,8 +75,10 @@ typedef struct {
     /* Thread lock for compressing */
     PyThread_type_lock lock;
 
-    /* __init__ has been called, 0 or 1. */
-    char inited;
+    /* Initialized to 0
+       When __init__ has been called, 1
+       When has been decompressed, 2 */
+    char stage;
 } ZstdDecompressor;
 
 typedef struct {
@@ -174,8 +176,8 @@ static const int BUFFER_BLOCK_SIZE[] =
    Return -1 on failure
 */
 static inline int
-OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
-                         ZSTD_outBuffer *ob)
+OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob,
+                         Py_ssize_t max_length)
 {
     PyObject *b;
     int block_size;
@@ -219,10 +221,12 @@ OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, Py_ssize_t max_length,
    Return -1 on failure
 */
 static inline int
-OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, Py_ssize_t init_size,
-                          ZSTD_outBuffer *ob)
+OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob,
+                          Py_ssize_t max_length, Py_ssize_t init_size)
 {
     PyObject *b;
+
+    assert(max_length < 0 || init_size <= max_length);
 
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, init_size);
@@ -242,7 +246,7 @@ OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, Py_ssize_t init_size,
 
     /* Set variables */
     buffer->allocated = init_size;
-    buffer->max_length = -1;
+    buffer->max_length = max_length;
 
     ob->dst = PyBytes_AS_STRING(b);
     ob->size = (size_t) init_size;
@@ -324,6 +328,17 @@ OutputBuffer_Finish(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
 {
     PyObject *result, *block;
     int8_t *offset;
+    const Py_ssize_t list_len = Py_SIZE(buffer->list);
+
+    /* Fast path for single block */
+    if ((ob->pos == 0 && list_len == 2) ||
+        (ob->pos == ob->size && list_len == 1)) {
+        block = PyList_GET_ITEM(buffer->list, 0);
+        Py_INCREF(block);
+
+        Py_DECREF(buffer->list);
+        return block;
+    }
 
     /* Final bytes object */
     result = PyBytes_FromStringAndSize(NULL, buffer->allocated - (ob->size - ob->pos));
@@ -333,12 +348,12 @@ OutputBuffer_Finish(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob)
     }
 
     /* Memory copy */
-    if (Py_SIZE(buffer->list) > 0) {
+    if (list_len > 0) {
         offset = (int8_t*) PyBytes_AS_STRING(result);
 
         /* Blocks except the last one */
         Py_ssize_t i = 0;
-        for (; i < Py_SIZE(buffer->list)-1; i++) {
+        for (; i < list_len-1; i++) {
             block = PyList_GET_ITEM(buffer->list, i);
             memcpy(offset, PyBytes_AS_STRING(block), Py_SIZE(block));
             offset += Py_SIZE(block);
@@ -1421,11 +1436,12 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
 
         /* OutputBuffer(OnError)(&buffer) is after `error` label,
            so initialize the buffer before any `goto error` statement. */
-        if (OutputBuffer_InitWithSize(&buffer, (Py_ssize_t) output_buffer_size, &out) < 0) {
+        if (OutputBuffer_InitWithSize(&buffer, &out,
+                                      -1, (Py_ssize_t) output_buffer_size) < 0) {
             goto error;
         }
     } else {
-        if (OutputBuffer_InitAndGrow(&buffer, -1, &out) < 0) {
+        if (OutputBuffer_InitAndGrow(&buffer, &out, -1) < 0) {
             goto error;
         }
     }
@@ -1487,7 +1503,7 @@ compress_mt_continue_impl(ZstdCompressor *self, Py_buffer *data)
     in.size = data->len;
     in.pos = 0;
 
-    if (OutputBuffer_InitAndGrow(&buffer, -1, &out) < 0) {
+    if (OutputBuffer_InitAndGrow(&buffer, &out, -1) < 0) {
         goto error;
     }
 
@@ -1842,7 +1858,7 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     assert(self->input_buffer_size == 0);
     assert(self->in_begin == 0);
     assert(self->in_end == 0);
-    assert(self->inited == 0);
+    assert(self->stage == 0);
 
     /* at_frame_edge flag */
     self->at_frame_edge = 1;
@@ -1916,12 +1932,12 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
     assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     /* Only called once */
-    if (self->inited) {
+    if (self->stage) {
         PyErr_SetString(PyExc_RuntimeError,
                         "ZstdDecompressor.__init__ function was called twice.");
         return -1;
     }
-    self->inited = 1;
+    self->stage = 1;
 
     /* Load dictionary to decompress context */
     if (zstd_dict != Py_None) {
@@ -1945,7 +1961,8 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
 }
 
 static inline PyObject *
-decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in, Py_ssize_t max_length)
+decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
+                Py_ssize_t max_length, Py_ssize_t decompressed_size)
 {
     size_t zstd_ret;
     ZSTD_outBuffer out;
@@ -1956,8 +1973,16 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in, Py_ssize_t max_length
 
     /* OutputBuffer(OnError)(&buffer) is after `error` label,
        so initialize the buffer before any `goto error` statement. */
-    if (OutputBuffer_InitAndGrow(&buffer, max_length, &out) < 0) {
-        goto error;
+    if (decompressed_size > 0 &&
+        (max_length < 0 || decompressed_size <= max_length)) {
+        if (OutputBuffer_InitWithSize(&buffer, &out,
+                                      max_length, decompressed_size) < 0) {
+            goto error;
+        }
+    } else {
+        if (OutputBuffer_InitAndGrow(&buffer, &out, max_length) < 0) {
+            goto error;
+        }
     }
     assert(out.pos == 0);
 
@@ -2051,6 +2076,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 {
     ZSTD_inBuffer in;
     PyObject *ret = NULL;
+    unsigned long long decompressed_size = 0;
     char at_frame_edge_backup;
     char use_input_buffer;
 
@@ -2067,6 +2093,16 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         in.src = data->buf;
         in.size = data->len;
         in.pos = 0;
+
+        /* Get decompressed size */
+        if (self->stage != 2) {
+            self->stage = 2;
+
+            decompressed_size = ZSTD_getDecompressedSize(data->buf, data->len);
+            if (decompressed_size > PY_SSIZE_T_MAX) {
+                decompressed_size = 0;
+            }
+        }
     } else if (data->len == 0) {
         /* Has unconsumed data, fast path for b'' */
         use_input_buffer = 1;
@@ -2132,7 +2168,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     assert(in.pos == 0);
 
     /* Decompress */
-    ret = decompress_impl(self, &in, max_length);
+    ret = decompress_impl(self, &in, max_length, (Py_ssize_t) decompressed_size);
     if (ret == NULL) {
         goto error;
     }
