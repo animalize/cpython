@@ -75,9 +75,9 @@ typedef struct {
     /* Thread lock for compressing */
     PyThread_type_lock lock;
 
-    /* Initialized to 0
-       When __init__ has been called, 1
-       When has been decompressed, 2 */
+    /* 0: initialized in __new__
+       1: __init__ has been called
+       2: the object has decompressed data */
     char stage;
 } ZstdDecompressor;
 
