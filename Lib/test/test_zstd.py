@@ -657,6 +657,16 @@ class CompressorDecompressorTestCase(unittest.TestCase):
         self.assertFalse(d.at_frame_edge)
         self.assertFalse(d.needs_input)
 
+    def test_decompress_2x130KB(self):
+        decompressed_size = get_frame_info(TEST_DAT_130KB).decompressed_size
+        self.assertEqual(decompressed_size, 130 * 1024)
+
+        d = ZstdDecompressor()
+        dat = d.decompress(TEST_DAT_130KB + TEST_DAT_130KB)
+        self.assertEqual(len(dat), 2 * 130 * 1024)
+        self.assertTrue(d.at_frame_edge)
+        self.assertTrue(d.needs_input)
+
     def test_compress_flushblock(self):
         point = len(THIS_FILE_BYTES) // 2
 
