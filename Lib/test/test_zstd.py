@@ -854,6 +854,9 @@ class DecompressorFlagsTestCase(unittest.TestCase):
         dat = decompress(b'')
         self.assertEqual(dat, b'')
 
+        dat = decompress(TEST_DAT_130KB + TEST_DAT_130KB)
+        self.assertEqual(len(dat), 2*130*1024)
+
     def test_decompress_2(self):
         with self.assertRaises(TypeError):
             decompress(b'', {})
