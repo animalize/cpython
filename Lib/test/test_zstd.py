@@ -838,6 +838,32 @@ class DecompressorFlagsTestCase(unittest.TestCase):
         self.assertTrue(d.at_frame_edge)
         self.assertTrue(d.needs_input)
 
+    def test_decompress_1(self):
+        output = decompress(TEST_DAT_130KB)
+        self.assertEqual(len(output), 130*1024)
+
+        with self.assertRaisesRegex(ZstdError, r'incomplete'):
+            decompress(TEST_DAT_130KB[:20])
+
+        with self.assertRaisesRegex(ZstdError, r'incomplete'):
+            decompress(TEST_DAT_130KB[:200])
+
+        with self.assertRaisesRegex(ZstdError, r'incomplete'):
+            decompress(TEST_DAT_130KB[:-100])
+        
+        dat = decompress(b'')
+        self.assertEqual(dat, b'')
+
+    def test_decompress_2(self):
+        with self.assertRaises(TypeError):
+            decompress(b'', {})
+
+        with self.assertRaises(TypeError):
+            decompress(b'', None, DParameter.windowLogMax)
+
+        ret = decompress(b'', zstd_dict=TRAINED_DICT, option={DParameter.windowLogMax:25})
+        self.assertEqual(ret, b'')
+
 
 class ZstdDictTestCase(unittest.TestCase):
 
