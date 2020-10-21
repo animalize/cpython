@@ -610,6 +610,74 @@ _zstd_ZstdDecompressor___reduce__(ZstdDecompressor *self, PyObject *Py_UNUSED(ig
     return _zstd_ZstdDecompressor___reduce___impl(self);
 }
 
+PyDoc_STRVAR(_zstd_decompress__doc__,
+"decompress($module, /, data, zstd_dict=None, option=None)\n"
+"--\n"
+"\n"
+"Decompress a block of data.\n"
+"\n"
+"  data\n"
+"    Data to be compressed, a bytes-like object.\n"
+"  zstd_dict\n"
+"    Pre-trained dictionary for decompression, a ZstdDict object.\n"
+"  option\n"
+"    A dictionary for setting advanced parameters. The default\n"
+"    value None means to use zstd\'s default decompression parameters.\n"
+"\n"
+"For incremental decompression, use ZstdDecompressor instead.");
+
+#define _ZSTD_DECOMPRESS_METHODDEF    \
+    {"decompress", (PyCFunction)(void(*)(void))_zstd_decompress, METH_FASTCALL|METH_KEYWORDS, _zstd_decompress__doc__},
+
+static PyObject *
+_zstd_decompress_impl(PyObject *module, Py_buffer *data, PyObject *zstd_dict,
+                      PyObject *option);
+
+static PyObject *
+_zstd_decompress(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"data", "zstd_dict", "option", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "decompress", 0};
+    PyObject *argsbuf[3];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    Py_buffer data = {NULL, NULL};
+    PyObject *zstd_dict = Py_None;
+    PyObject *option = Py_None;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 1, 3, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (PyObject_GetBuffer(args[0], &data, PyBUF_SIMPLE) != 0) {
+        goto exit;
+    }
+    if (!PyBuffer_IsContiguous(&data, 'C')) {
+        _PyArg_BadArgument("decompress", "argument 'data'", "contiguous buffer", args[0]);
+        goto exit;
+    }
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    if (args[1]) {
+        zstd_dict = args[1];
+        if (!--noptargs) {
+            goto skip_optional_pos;
+        }
+    }
+    option = args[2];
+skip_optional_pos:
+    return_value = _zstd_decompress_impl(module, &data, zstd_dict, option);
+
+exit:
+    /* Cleanup for data */
+    if (data.obj) {
+       PyBuffer_Release(&data);
+    }
+
+    return return_value;
+}
+
 PyDoc_STRVAR(_zstd__get_cparam_bounds__doc__,
 "_get_cparam_bounds($module, /, cParam)\n"
 "--\n"
@@ -778,4 +846,4 @@ exit:
 
     return return_value;
 }
-/*[clinic end generated code: output=e84e7fe2bde310ba input=a9049054013a1b77]*/
+/*[clinic end generated code: output=0079e5392fda3833 input=a9049054013a1b77]*/
