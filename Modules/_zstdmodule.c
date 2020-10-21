@@ -1990,13 +1990,11 @@ decompress_impl(_zstd_state *state, ZstdDecompressor *self, ZSTD_inBuffer *in,
         }
 
         /* Set at_frame_edge flag */
-        if (out.pos > 0 || zstd_ret == 0) {
-            /* (zstd_ret == 0) means a frame is completely decoded and fully flushed.
-               check (out.pos > 0):   Set the flag when outputted.
-               check (zstd_ret == 0): In rare case, frame epilogue is decoded, but
-                                      no data outputted.
-               Check these because after decoding a frame, decompress an empty input
-               will cause zstd_ret becomes non-zero. */
+        if (out.pos == 0 && zstd_ret != 0) {
+            /* Skip when the last round has no output.
+               Check these because after decoding a frame, decompress an empty
+               input will cause zstd_ret becomes non-zero. */
+        } else {
             self->at_frame_edge = (zstd_ret == 0) ? 1 : 0;
         }
 
