@@ -75,10 +75,8 @@ typedef struct {
     /* Thread lock for compressing */
     PyThread_type_lock lock;
 
-    /* 0: initialized in __new__
-       1: __init__ has been called
-       2: the object has decompressed data */
-    char stage;
+    /* __init__ has been called, 0 or 1. */
+    char inited;
 } ZstdDecompressor;
 
 typedef struct {
@@ -222,11 +220,9 @@ OutputBuffer_InitAndGrow(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob,
 */
 static inline int
 OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob,
-                          Py_ssize_t max_length, Py_ssize_t init_size)
+                          Py_ssize_t init_size)
 {
     PyObject *b;
-
-    assert(max_length < 0 || init_size <= max_length);
 
     /* The first block */
     b = PyBytes_FromStringAndSize(NULL, init_size);
@@ -246,7 +242,7 @@ OutputBuffer_InitWithSize(BlocksOutputBuffer *buffer, ZSTD_outBuffer *ob,
 
     /* Set variables */
     buffer->allocated = init_size;
-    buffer->max_length = max_length;
+    buffer->max_length = -1;
 
     ob->dst = PyBytes_AS_STRING(b);
     ob->size = (size_t) init_size;
@@ -1437,7 +1433,7 @@ compress_impl(ZstdCompressor *self, Py_buffer *data,
         /* OutputBuffer(OnError)(&buffer) is after `error` label,
            so initialize the buffer before any `goto error` statement. */
         if (OutputBuffer_InitWithSize(&buffer, &out,
-                                      -1, (Py_ssize_t) output_buffer_size) < 0) {
+                                      (Py_ssize_t) output_buffer_size) < 0) {
             goto error;
         }
     } else {
@@ -1858,7 +1854,7 @@ _ZstdDecompressor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     assert(self->input_buffer_size == 0);
     assert(self->in_begin == 0);
     assert(self->in_end == 0);
-    assert(self->stage == 0);
+    assert(self->inited == 0);
 
     /* at_frame_edge flag */
     self->at_frame_edge = 1;
@@ -1932,12 +1928,12 @@ _zstd_ZstdDecompressor___init___impl(ZstdDecompressor *self,
     assert(PyType_GetModuleState(Py_TYPE(self)) != NULL);
 
     /* Only called once */
-    if (self->stage) {
+    if (self->inited) {
         PyErr_SetString(PyExc_RuntimeError,
                         "ZstdDecompressor.__init__ function was called twice.");
         return -1;
     }
-    self->stage = 1;
+    self->inited = 1;
 
     /* Load dictionary to decompress context */
     if (zstd_dict != Py_None) {
@@ -1973,10 +1969,8 @@ decompress_impl(ZstdDecompressor *self, ZSTD_inBuffer *in,
 
     /* OutputBuffer(OnError)(&buffer) is after `error` label,
        so initialize the buffer before any `goto error` statement. */
-    if (decompressed_size > 0 &&
-        (max_length < 0 || decompressed_size <= max_length)) {
-        if (OutputBuffer_InitWithSize(&buffer, &out,
-                                      max_length, decompressed_size) < 0) {
+    if (decompressed_size > 0) {
+        if (OutputBuffer_InitWithSize(&buffer, &out, decompressed_size) < 0) {
             goto error;
         }
     } else {
@@ -2076,7 +2070,6 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
 {
     ZSTD_inBuffer in;
     PyObject *ret = NULL;
-    unsigned long long decompressed_size = 0;
     char at_frame_edge_backup;
     char use_input_buffer;
 
@@ -2093,16 +2086,6 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
         in.src = data->buf;
         in.size = data->len;
         in.pos = 0;
-
-        /* Get decompressed size */
-        if (self->stage != 2) {
-            self->stage = 2;
-
-            decompressed_size = ZSTD_getDecompressedSize(data->buf, data->len);
-            if (decompressed_size > PY_SSIZE_T_MAX) {
-                decompressed_size = 0;
-            }
-        }
     } else if (data->len == 0) {
         /* Has unconsumed data, fast path for b'' */
         use_input_buffer = 1;
@@ -2168,7 +2151,7 @@ _zstd_ZstdDecompressor_decompress_impl(ZstdDecompressor *self,
     assert(in.pos == 0);
 
     /* Decompress */
-    ret = decompress_impl(self, &in, max_length, (Py_ssize_t) decompressed_size);
+    ret = decompress_impl(self, &in, max_length, 0);
     if (ret == NULL) {
         goto error;
     }
