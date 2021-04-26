@@ -38,7 +38,6 @@ Buffer_InitWithSize(_BlocksOutputBuffer *buffer, Py_ssize_t init_size,
     Py_ssize_t allocated;
 
     if (init_size > UINT32_MAX) {
-        buffer->list = NULL;  // For _BlocksOutputBuffer_OnError
         PyErr_SetString(PyExc_ValueError,
                         "Initial buffer size should <= UINT32_MAX.");
         return -1;
@@ -239,15 +238,13 @@ zlib_compress_impl(PyObject *module, Py_buffer *data, int level)
     PyObject *RetVal;
     int flush;
     z_stream zst;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
 
     zlibstate *state = get_zlib_state(module);
 
     Byte *ibuf = data->buf;
     Py_ssize_t ibuflen = data->len;
 
-    // OutputBuffer(OnError)(&buffer) is after `error` label,
-    // so initialize the buffer before any `goto error` statement.
     if (Buffer_InitAndGrow(&buffer, -1, &zst.next_out, &zst.avail_out) < 0) {
         goto error;
     }
@@ -341,7 +338,7 @@ zlib_decompress_impl(PyObject *module, Py_buffer *data, int wbits,
     Py_ssize_t ibuflen;
     int err, flush;
     z_stream zst;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
 
     zlibstate *state = get_zlib_state(module);
 
@@ -352,8 +349,6 @@ zlib_decompress_impl(PyObject *module, Py_buffer *data, int wbits,
         bufsize = 1;
     }
 
-    // OutputBuffer(OnError)(&buffer) is after `error` label,
-    // so initialize the buffer before any `goto error` statement.
     if (Buffer_InitWithSize(&buffer, bufsize, &zst.next_out, &zst.avail_out) < 0) {
         goto error;
     }
@@ -671,7 +666,7 @@ zlib_Compress_compress_impl(compobject *self, PyTypeObject *cls,
 {
     PyObject *RetVal;
     int err;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
 
     zlibstate *state = PyType_GetModuleState(cls);
 
@@ -792,7 +787,7 @@ zlib_Decompress_decompress_impl(compobject *self, PyTypeObject *cls,
     int err = Z_OK;
     Py_ssize_t ibuflen;
     PyObject *RetVal;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
 
     PyObject *module = PyType_GetModule(cls);
     if (module == NULL)
@@ -901,7 +896,7 @@ zlib_Compress_flush_impl(compobject *self, PyTypeObject *cls, int mode)
 {
     int err;
     PyObject *RetVal;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
 
     zlibstate *state = PyType_GetModuleState(cls);
     /* Flushing with Z_NO_FLUSH is a no-op, so there's no point in
@@ -1169,7 +1164,7 @@ zlib_Decompress_flush_impl(compobject *self, PyTypeObject *cls,
     Py_buffer data;
     PyObject *RetVal;
     Py_ssize_t ibuflen;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
 
     PyObject *module = PyType_GetModule(cls);
     if (module == NULL) {

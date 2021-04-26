@@ -11,24 +11,25 @@
 
    Usage:
 
-   1, Initialize the output buffer use one of these functions:
+   1, Initialize `buffer` variable like this:
+        _BlocksOutputBuffer buffer = {.list = NULL};
+      Set .list to NULL for _BlocksOutputBuffer_OnError()
+
+   2, Initialize the output buffer use one of these functions:
         _BlocksOutputBuffer_Init()
         _BlocksOutputBuffer_InitAndGrow()
         _BlocksOutputBuffer_InitWithSize()
-      If fails before calling these functions, `buffer->list` must be set to
-      NULL for _BlocksOutputBuffer_OnError(). Or initialize `buffer` like this:
-        _BlocksOutputBuffer buffer = {.list = NULL};
 
-   2, If (avail_out == 0), grow the buffer:
+   3, If (avail_out == 0), grow the buffer:
         _BlocksOutputBuffer_Grow()
 
-   3, Get the current outputted data size:
+   4, Get the current outputted data size:
         _BlocksOutputBuffer_GetDataSize()
 
-   4, Finish the buffer, and return a bytes object:
+   5, Finish the buffer, and return a bytes object:
         _BlocksOutputBuffer_Finish()
 
-   5, Clean up the buffer when an error occurred:
+   6, Clean up the buffer when an error occurred:
         _BlocksOutputBuffer_OnError()
 */
 
@@ -179,7 +180,7 @@ _BlocksOutputBuffer_InitWithSize(_BlocksOutputBuffer *buffer,
     // the first block
     b = PyBytes_FromStringAndSize(NULL, init_size);
     if (b == NULL) {
-        buffer->list = NULL; // for OutputBuffer_OnError()
+        buffer->list = NULL; // for _BlocksOutputBuffer_OnError()
 
         PyErr_SetString(PyExc_MemoryError, unable_allocate_msg);
         return -1;

@@ -545,7 +545,7 @@ static PyObject *
 compress(Compressor *c, uint8_t *data, size_t len, lzma_action action)
 {
     PyObject *result;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
     _lzma_state *state = PyType_GetModuleState(Py_TYPE(c));
     assert(state != NULL);
 
@@ -929,7 +929,7 @@ decompress_buf(Decompressor *d, Py_ssize_t max_length)
 {
     PyObject *result;
     lzma_stream *lzs = &d->lzs;
-    _BlocksOutputBuffer buffer;
+    _BlocksOutputBuffer buffer = {.list = NULL};
     _lzma_state *state = PyType_GetModuleState(Py_TYPE(d));
     assert(state != NULL);
 
